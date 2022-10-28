@@ -18,6 +18,8 @@ const { expect } = require("chai");
 const { upgrades, ethers } = require('hardhat');
 // const {ethers,upgrades} = require("hardhat");
 
+const DECIMAL = 10n ** 18n;
+
 describe('CToken', function () {
 
   describe('constructor', () => {
@@ -76,21 +78,47 @@ describe('CToken', function () {
 
       //部署完成後，將合約物件回傳，等待邏輯測試
       await CERC20Deploy.deployed();   
-      return { CERC20Deploy };
+      return { CERC20Deploy, ERC20Deploy, comptrollerDeploy };
     }
 
 
-    it("fails when non cerc-20 underlying", async () => {
+    it("fails when cant mint cerc20 ", async () => {
 
-      // const { ERC20Deploy } = await loadFixture(deployERC20);
+      const { CERC20Deploy,ERC20Deploy ,comptrollerDeploy} = await loadFixture(deployCERC20);
 
-      // const { comptrollerDeploy } = await loadFixture(deployComptroller);
+      const adminAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 
-      // const { irModelDeploy } = await loadFixture(deployInterestRateModel);
+      const MINT_AMOUNT = 100n * DECIMAL;
 
-      const { CERC20Deploy } = await loadFixture(deployCERC20);
+      await ERC20Deploy.approve(CERC20Deploy.address,MINT_AMOUNT);
 
-      console.log("CERC20 deploy succes");
+      await comptrollerDeploy._supportMarket(CERC20Deploy.address);
+
+      await CERC20Deploy.mint(MINT_AMOUNT);
+
+      const adminErc20Balance = await ERC20Deploy.balanceOf(adminAddress);
+      const cerc20Erc20Balance = await ERC20Deploy.balanceOf(CERC20Deploy.address);
+      const adminCErc20Balance = await CERC20Deploy.balanceOf(adminAddress);
+		
+      console.log("adminErc20Balance:" + adminErc20Balance);
+      console.log("cerc20Erc20Balance:" + cerc20Erc20Balance);
+      console.log("adminCErc20Balance:" + adminCErc20Balance);
+
+			expect(cerc20Erc20Balance).to.equal(MINT_AMOUNT);
+			expect(adminCErc20Balance).to.equal(MINT_AMOUNT);
+
+      await CERC20Deploy.redeem(MINT_AMOUNT);
+
+      const newAdminErc20Balance = await ERC20Deploy.balanceOf(adminAddress);
+      const newCerc20Erc20Balance = await ERC20Deploy.balanceOf(CERC20Deploy.address);
+      const newAdminCErc20Balance = await CERC20Deploy.balanceOf(adminAddress);
+
+      console.log("adminErc20Balance:" + newAdminErc20Balance);
+      console.log("cerc20Erc20Balance:" + newCerc20Erc20Balance);
+      console.log("adminCErc20Balance:" + newAdminCErc20Balance);
+      
+      
+      console.log("mint erc20 succes");
     });
 
 

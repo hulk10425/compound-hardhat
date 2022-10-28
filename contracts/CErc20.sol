@@ -2,6 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "./CToken.sol";
+import "hardhat/console.sol";
 
 interface CompLike {
     function delegate(address delegatee) external;
@@ -47,6 +48,7 @@ contract CErc20 is CToken, CErc20Interface {
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
     function mint(uint mintAmount) override external returns (uint) {
+        console.log("hihihi");
         mintInternal(mintAmount);
         return NO_ERROR;
     }

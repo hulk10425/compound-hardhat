@@ -7,6 +7,7 @@ import "./ErrorReporter.sol";
 import "./EIP20Interface.sol";
 import "./InterestRateModel.sol";
 import "./ExponentialNoError.sol";
+import "hardhat/console.sol";
 
 /**
  * @title Compound's CToken Contract
@@ -415,6 +416,8 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
     function mintFresh(address minter, uint mintAmount) internal {
         /* Fail if mint not allowed */
         uint allowed = comptroller.mintAllowed(address(this), minter, mintAmount);
+        console.log("allowed");
+        console.log(allowed);
         if (allowed != 0) {
             revert MintComptrollerRejection(allowed);
         }
