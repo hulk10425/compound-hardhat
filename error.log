@@ -1,0 +1,11 @@
+
+
+  CToken
+    constructor
+Duplicate definition of ActionPaused (ActionPaused(string,bool), ActionPaused(address,string,bool))
+CERC20 deploy succes
+      ✔ fails when non cerc-20 underlying (3834ms)
+
+
+  1 passing (4s)
+
