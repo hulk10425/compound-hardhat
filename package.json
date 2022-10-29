@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.7.3",
+    "big-number": "^2.0.0",
     "eth-saddle": "^0.1.25",
     "web3": "^1.8.0"
   }

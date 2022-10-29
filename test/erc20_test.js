@@ -16,7 +16,7 @@ const {
 
 const { expect } = require("chai");
 const { upgrades, ethers } = require('hardhat');
-// const {ethers,upgrades} = require("hardhat");
+const BigNumber = require('big-number');
 
 const DECIMAL = 10n ** 18n;
 
@@ -65,7 +65,7 @@ describe('CToken', function () {
       const oracleModel = await hre.ethers.getContractFactory("SimplePriceOracle");
       const oracleDeploy = await oracleModel.deploy();
       await oracleDeploy.deployed();
-      return {oracleModel};
+      return {oracleDeploy};
     }
 
     async function deployCERC20() {
@@ -82,7 +82,7 @@ describe('CToken', function () {
 
       const { irModelDeploy } = await loadFixture(deployInterestRateModel);
 
-      const { oracleModel} = await loadFixture(deployOracle);
+      const { oracleDeploy} = await loadFixture(deployOracle);
 
       //單純使用CErc20Immutalbe
       const CERC20 = await hre.ethers.getContractFactory("CErc20Immutable");
@@ -112,7 +112,7 @@ describe('CToken', function () {
       //部署完成後，將合約物件回傳，等待邏輯測試
       await CERC20Deploy.deployed();   
       await anotherCERC20Deploy.deployed();
-      return { CERC20Deploy, anotherCERC20Deploy, ERC20Deploy, anotherERC20Deploy, comptrollerDeploy, oracleModel};
+      return { CERC20Deploy, anotherCERC20Deploy, ERC20Deploy, anotherERC20Deploy, comptrollerDeploy, oracleDeploy};
     }
 
 
@@ -170,11 +170,13 @@ describe('CToken', function () {
     
     it("oracle ", async () => {
 
-      const { CERC20Deploy, anotherCERC20Deploy, ERC20Deploy , anotherERC20Deploy,comptrollerDeploy, oracleModel} = await loadFixture(deployCERC20);
+      const { CERC20Deploy, anotherCERC20Deploy, ERC20Deploy , anotherERC20Deploy,comptrollerDeploy, oracleDeploy} = await loadFixture(deployCERC20);
 
       const adminAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 
-      const MINT_AMOUNT = 100n * DECIMAL;
+      const MINT_AMOUNT = 10000n * DECIMAL;
+
+      const COLLATERAL_FACTOR = BigNumber(0.5).multiply(DECIMAL.toString()).toString();
       //第一種ERC20 Token mint
       await ERC20Deploy.approve(CERC20Deploy.address,MINT_AMOUNT);
 
@@ -226,7 +228,27 @@ describe('CToken', function () {
       // console.log("mint erc20 succes");
 
       // // setDirectPrice(address asset, uint price)
-      // oracleModel.setDirectPrice()
+      
+      oracleDeploy.setUnderlyingPrice(ERC20Deploy.address,1n * DECIMAL)
+      oracleDeploy.setUnderlyingPrice(anotherERC20Deploy.address,100n * DECIMAL)
+      
+      comptrollerDeploy._setCollateralFactor(anotherCERC20Deploy.address, COLLATERAL_FACTOR );
+
+      const [owner, ...otherAccount] = await ethers.getSigners();
+
+      await anotherCERC20Deploy.transfer(otherAccount[0].address, 1n ** DECIMAL);
+
+      const addr1Balance = await anotherCERC20Deploy.balanceOf(otherAccount[0].address);
+
+      console.log(addr1Balance)
+
+      
+      // expect(addr1Balance).to.equal(1n * DECIMAL);
+
+
+      //admin transfer B to someone
+      //someone
+
       // oracleModel.setDirectPrice()
       
 
