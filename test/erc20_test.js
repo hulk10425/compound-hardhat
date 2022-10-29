@@ -34,6 +34,16 @@ describe('CToken', function () {
       return { ERC20Deploy };
     }
 
+    async function deployAnotherERC20() {
+      //在local部署合約
+      const ERC20 = await hre.ethers.getContractFactory("MyToken2");
+      //等待部署
+      const anotherERC20Deploy = await ERC20.deploy();
+      //部署完成後，將合約物件回傳，等待邏輯測試
+      await anotherERC20Deploy.deployed();
+      return { anotherERC20Deploy };
+    }
+
     async function deployComptroller() {
       const comptroller = await hre.ethers.getContractFactory("Comptroller");
       const comptrollerDeploy = await comptroller.deploy();
@@ -50,6 +60,14 @@ describe('CToken', function () {
       return { irModelDeploy };
     }
 
+    //部署Oracle
+    async function deployOracle() {
+      const oracleModel = await hre.ethers.getContractFactory("SimplePriceOracle");
+      const oracleDeploy = await oracleModel.deploy();
+      await oracleDeploy.deployed();
+      return {oracleModel};
+    }
+
     async function deployCERC20() {
       // 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
       // 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
@@ -57,10 +75,14 @@ describe('CToken', function () {
       const adminAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 
       const { ERC20Deploy } = await loadFixture(deployERC20);
+      
+      const { anotherERC20Deploy} = await loadFixture(deployAnotherERC20);
 
       const { comptrollerDeploy } = await loadFixture(deployComptroller);
 
       const { irModelDeploy } = await loadFixture(deployInterestRateModel);
+
+      const { oracleModel} = await loadFixture(deployOracle);
 
       //單純使用CErc20Immutalbe
       const CERC20 = await hre.ethers.getContractFactory("CErc20Immutable");
@@ -76,78 +98,143 @@ describe('CToken', function () {
         adminAddress
       );
 
+      const anotherCERC20Deploy = await CERC20.deploy(
+        anotherERC20Deploy.address,
+        comptrollerDeploy.address,
+        irModelDeploy.address,
+        ethers.utils.parseUnits("1",18),//
+        "cHulkToken2",
+        "cHulk2",
+        18,
+        adminAddress
+      );
+
       //部署完成後，將合約物件回傳，等待邏輯測試
       await CERC20Deploy.deployed();   
-      return { CERC20Deploy, ERC20Deploy, comptrollerDeploy };
+      await anotherCERC20Deploy.deployed();
+      return { CERC20Deploy, anotherCERC20Deploy, ERC20Deploy, anotherERC20Deploy, comptrollerDeploy, oracleModel};
     }
 
 
-    it("fails when cant mint cerc20 ", async () => {
+    // it("fails when cant mint cerc20 ", async () => {
 
-      const { CERC20Deploy,ERC20Deploy ,comptrollerDeploy} = await loadFixture(deployCERC20);
+    //   const { CERC20Deploy,ERC20Deploy ,comptrollerDeploy, oracleModel} = await loadFixture(deployCERC20);
+
+    //   const adminAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+
+    //   const MINT_AMOUNT = 100n * DECIMAL;
+
+    //   await ERC20Deploy.approve(CERC20Deploy.address,MINT_AMOUNT);
+
+    //   await comptrollerDeploy._supportMarket(CERC20Deploy.address);
+
+    //   await CERC20Deploy.mint(MINT_AMOUNT);
+
+    //   const adminErc20Balance = await ERC20Deploy.balanceOf(adminAddress);
+    //   const cerc20Erc20Balance = await ERC20Deploy.balanceOf(CERC20Deploy.address);
+    //   const adminCErc20Balance = await CERC20Deploy.balanceOf(adminAddress);
+		
+    //   console.log("adminErc20Balance:" + adminErc20Balance);
+    //   console.log("cerc20Erc20Balance:" + cerc20Erc20Balance);
+    //   console.log("adminCErc20Balance:" + adminCErc20Balance);
+
+		// 	expect(cerc20Erc20Balance).to.equal(MINT_AMOUNT);
+		// 	expect(adminCErc20Balance).to.equal(MINT_AMOUNT);
+
+    //   await CERC20Deploy.redeem(MINT_AMOUNT);
+
+    //   const newAdminErc20Balance = await ERC20Deploy.balanceOf(adminAddress);
+    //   const newCerc20Erc20Balance = await ERC20Deploy.balanceOf(CERC20Deploy.address);
+    //   const newAdminCErc20Balance = await CERC20Deploy.balanceOf(adminAddress);
+
+    //   console.log("adminErc20Balance:" + newAdminErc20Balance);
+    //   console.log("cerc20Erc20Balance:" + newCerc20Erc20Balance);
+    //   console.log("adminCErc20Balance:" + newAdminCErc20Balance);
+      
+      
+    //   console.log("mint erc20 succes");
+
+
+    //   oracleModel.
+
+
+
+    //   comptrollerDeploy._setPriceOracle(oracleModel.address);
+
+    // });
+
+    //設定oracle
+    // _setPriceOracle
+    //設定 A\B兩種 Erc20 Token價格
+    // setUnderlyingPrice
+    
+    it("oracle ", async () => {
+
+      const { CERC20Deploy, anotherCERC20Deploy, ERC20Deploy , anotherERC20Deploy,comptrollerDeploy, oracleModel} = await loadFixture(deployCERC20);
 
       const adminAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 
       const MINT_AMOUNT = 100n * DECIMAL;
-
+      //第一種ERC20 Token mint
       await ERC20Deploy.approve(CERC20Deploy.address,MINT_AMOUNT);
 
       await comptrollerDeploy._supportMarket(CERC20Deploy.address);
 
       await CERC20Deploy.mint(MINT_AMOUNT);
+      
+      //第二種ERC20 Token mint
+      
+      await anotherERC20Deploy.approve(anotherCERC20Deploy.address,MINT_AMOUNT);
+
+      await comptrollerDeploy._supportMarket(anotherCERC20Deploy.address);
+
+      await anotherCERC20Deploy.mint(MINT_AMOUNT);
 
       const adminErc20Balance = await ERC20Deploy.balanceOf(adminAddress);
+      const adminAnotherErc20Balance = await anotherERC20Deploy.balanceOf(adminAddress);
+
       const cerc20Erc20Balance = await ERC20Deploy.balanceOf(CERC20Deploy.address);
+      const cerc20AnotherErc20Balance = await anotherERC20Deploy.balanceOf(anotherCERC20Deploy.address);
+
       const adminCErc20Balance = await CERC20Deploy.balanceOf(adminAddress);
+      const adminAnotherCErc20Balance = await CERC20Deploy.balanceOf(adminAddress);
+      
 		
       console.log("adminErc20Balance:" + adminErc20Balance);
+      console.log("adminAnotherErc20Balance:" + adminAnotherErc20Balance);
+
       console.log("cerc20Erc20Balance:" + cerc20Erc20Balance);
+      console.log("cerc20AnotherErc20Balance" + cerc20AnotherErc20Balance);
+
       console.log("adminCErc20Balance:" + adminCErc20Balance);
+      console.log("adminAnotherCErc20Balance:" + adminAnotherCErc20Balance);
 
-			expect(cerc20Erc20Balance).to.equal(MINT_AMOUNT);
-			expect(adminCErc20Balance).to.equal(MINT_AMOUNT);
+			// expect(cerc20Erc20Balance).to.equal(MINT_AMOUNT);
+			// expect(adminCErc20Balance).to.equal(MINT_AMOUNT);
 
-      await CERC20Deploy.redeem(MINT_AMOUNT);
+      // await CERC20Deploy.redeem(MINT_AMOUNT);
 
-      const newAdminErc20Balance = await ERC20Deploy.balanceOf(adminAddress);
-      const newCerc20Erc20Balance = await ERC20Deploy.balanceOf(CERC20Deploy.address);
-      const newAdminCErc20Balance = await CERC20Deploy.balanceOf(adminAddress);
+      // const newAdminErc20Balance = await ERC20Deploy.balanceOf(adminAddress);
+      // const newCerc20Erc20Balance = await ERC20Deploy.balanceOf(CERC20Deploy.address);
+      // const newAdminCErc20Balance = await CERC20Deploy.balanceOf(adminAddress);
 
-      console.log("adminErc20Balance:" + newAdminErc20Balance);
-      console.log("cerc20Erc20Balance:" + newCerc20Erc20Balance);
-      console.log("adminCErc20Balance:" + newAdminCErc20Balance);
+      // console.log("adminErc20Balance:" + newAdminErc20Balance);
+      // console.log("cerc20Erc20Balance:" + newCerc20Erc20Balance);
+      // console.log("adminCErc20Balance:" + newAdminCErc20Balance);
       
       
-      console.log("mint erc20 succes");
+      // console.log("mint erc20 succes");
+
+      // // setDirectPrice(address asset, uint price)
+      // oracleModel.setDirectPrice()
+      // oracleModel.setDirectPrice()
+      
+
+
+      // comptrollerDeploy._setPriceOracle(oracleModel.address);
+
     });
-
-
-    // it("fails when mint 100 erc20 token", async () => {
-     
-
-
-    //   const { CERC20Deploy } = await loadFixture(deployCERC20);
-
-    //   console.log("CERC20 deploy succes");
-    // });
-
-
-
-
-    // it("fails when 0 initial exchange rate", async () => {
-    //   await expect(makeCToken({ exchangeRate: 0 })).rejects.toRevert("revert initial exchange rate must be greater than zero.");
-    // });
-
-    // it("succeeds with erc-20 underlying and non-zero exchange rate", async () => {
-    //   const cToken = await makeCToken();
-    //   expect(await call(cToken, 'underlying')).toEqual(cToken.underlying._address);
-    //   expect(await call(cToken, 'admin')).toEqual(root);
-    // });
-
-    // it("succeeds when setting admin to contructor argument", async () => {
-    //   const cToken = await makeCToken({ admin: admin });
-    //   expect(await call(cToken, 'admin')).toEqual(admin);
-    // });
+    
   });
 
   // describe('name, symbol, decimals', () => {
