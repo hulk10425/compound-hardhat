@@ -8,6 +8,7 @@ import "./ComptrollerInterface.sol";
 import "./ComptrollerStorage.sol";
 import "./Unitroller.sol";
 import "./Governance/Comp.sol";
+import "hardhat/console.sol";
 
 /**
  * @title Compound's Comptroller Contract
@@ -340,33 +341,31 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
     function borrowAllowed(address cToken, address borrower, uint borrowAmount) override external returns (uint) {
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!borrowGuardianPaused[cToken], "borrow is paused");
-
         if (!markets[cToken].isListed) {
+            console.log(1);
             return uint(Error.MARKET_NOT_LISTED);
         }
-
         if (!markets[cToken].accountMembership[borrower]) {
             // only cTokens may call borrowAllowed if borrower not in market
             require(msg.sender == cToken, "sender must be cToken");
-
+            console.log(2);
             // attempt to add borrower to the market
             Error err = addToMarketInternal(CToken(msg.sender), borrower);
             if (err != Error.NO_ERROR) {
                 return uint(err);
             }
-
             // it should be impossible to break the important invariant
             assert(markets[cToken].accountMembership[borrower]);
         }
-
         if (oracle.getUnderlyingPrice(CToken(cToken)) == 0) {
+            console.log(3);
             return uint(Error.PRICE_ERROR);
         }
-
 
         uint borrowCap = borrowCaps[cToken];
         // Borrow cap of 0 corresponds to unlimited borrowing
         if (borrowCap != 0) {
+            console.log(4);
             uint totalBorrows = CToken(cToken).totalBorrows();
             uint nextTotalBorrows = add_(totalBorrows, borrowAmount);
             require(nextTotalBorrows < borrowCap, "market borrow cap reached");
@@ -377,6 +376,8 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
             return uint(err);
         }
         if (shortfall > 0) {
+            console.log(shortfall);
+            console.log(5);
             return uint(Error.INSUFFICIENT_LIQUIDITY);
         }
 
@@ -725,15 +726,15 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
         CToken cTokenModify,
         uint redeemTokens,
         uint borrowAmount) internal view returns (Error, uint, uint) {
-
         AccountLiquidityLocalVars memory vars; // Holds all our calculation results
         uint oErr;
 
         // For each asset the account is in
         CToken[] memory assets = accountAssets[account];
+
         for (uint i = 0; i < assets.length; i++) {
             CToken asset = assets[i];
-
+            
             // Read the balances and exchange rate from the cToken
             (oErr, vars.cTokenBalance, vars.borrowBalance, vars.exchangeRateMantissa) = asset.getAccountSnapshot(account);
             if (oErr != 0) { // semi-opaque error code, we assume NO_ERROR == 0 is invariant between upgrades
@@ -866,36 +867,37 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
       */
     function _setCollateralFactor(CToken cToken, uint newCollateralFactorMantissa) external returns (uint) {
         // Check caller is admin
+        
         if (msg.sender != admin) {
+           
             return fail(Error.UNAUTHORIZED, FailureInfo.SET_COLLATERAL_FACTOR_OWNER_CHECK);
         }
-
+   
         // Verify market is listed
         Market storage market = markets[address(cToken)];
         if (!market.isListed) {
+       
             return fail(Error.MARKET_NOT_LISTED, FailureInfo.SET_COLLATERAL_FACTOR_NO_EXISTS);
         }
-
+    
         Exp memory newCollateralFactorExp = Exp({mantissa: newCollateralFactorMantissa});
 
         // Check collateral factor <= 0.9
         Exp memory highLimit = Exp({mantissa: collateralFactorMaxMantissa});
         if (lessThanExp(highLimit, newCollateralFactorExp)) {
+          
             return fail(Error.INVALID_COLLATERAL_FACTOR, FailureInfo.SET_COLLATERAL_FACTOR_VALIDATION);
         }
-
         // If collateral factor != 0, fail if price == 0
         if (newCollateralFactorMantissa != 0 && oracle.getUnderlyingPrice(cToken) == 0) {
             return fail(Error.PRICE_ERROR, FailureInfo.SET_COLLATERAL_FACTOR_WITHOUT_PRICE);
         }
-
         // Set market's collateral factor to new collateral factor, remember old value
         uint oldCollateralFactorMantissa = market.collateralFactorMantissa;
         market.collateralFactorMantissa = newCollateralFactorMantissa;
-
         // Emit event with asset, old collateral factor, and new collateral factor
         emit NewCollateralFactor(cToken, oldCollateralFactorMantissa, newCollateralFactorMantissa);
-
+        
         return uint(Error.NO_ERROR);
     }
 

@@ -9,4 +9,5 @@ contract MyToken is ERC20 {
     constructor() ERC20("HulkToken", "Hulk") {
         _mint(msg.sender, _initial_supply);
     }
+
 }

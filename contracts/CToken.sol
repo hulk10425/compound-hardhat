@@ -416,8 +416,6 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
     function mintFresh(address minter, uint mintAmount) internal {
         /* Fail if mint not allowed */
         uint allowed = comptroller.mintAllowed(address(this), minter, mintAmount);
-        console.log("allowed");
-        console.log(allowed);
         if (allowed != 0) {
             revert MintComptrollerRejection(allowed);
         }
@@ -586,6 +584,7 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
       */
     function borrowFresh(address payable borrower, uint borrowAmount) internal {
         /* Fail if borrow not allowed */
+       
         uint allowed = comptroller.borrowAllowed(address(this), borrower, borrowAmount);
         if (allowed != 0) {
             revert BorrowComptrollerRejection(allowed);
