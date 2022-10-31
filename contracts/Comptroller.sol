@@ -297,12 +297,15 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
         }
 
         /* If the redeemer is not 'in' the market, then we can bypass the liquidity check */
+        /// 檢查使用者是否 也具有借戶身份，有的話要檢查這個使用者的流動性
         if (!markets[cToken].accountMembership[redeemer]) {
             return uint(Error.NO_ERROR);
         }
 
         /* Otherwise, perform a hypothetical liquidity check to guard against shortfall */
+        //O
         (Error err, , uint shortfall) = getHypotheticalAccountLiquidityInternal(redeemer, CToken(cToken), redeemTokens, 0);
+        
         if (err != Error.NO_ERROR) {
             return uint(err);
         }
@@ -326,6 +329,7 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
         redeemer;
 
         // Require tokens is zero or amount is also zero
+        //阻擋想用 0 cToken 贖回 ERC20 的操作
         if (redeemTokens == 0 && redeemAmount > 0) {
             revert("redeemTokens zero");
         }
@@ -731,7 +735,8 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
 
         // For each asset the account is in
         CToken[] memory assets = accountAssets[account];
-
+        // 遍歷 使用者資產 
+        // 計算 總抵押品價值 跟 借款價值
         for (uint i = 0; i < assets.length; i++) {
             CToken asset = assets[i];
             
@@ -772,9 +777,11 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
         }
 
         // These are safe, as the underflow condition is checked first
+        //抵押品 > 總借款
         if (vars.sumCollateral > vars.sumBorrowPlusEffects) {
             return (Error.NO_ERROR, vars.sumCollateral - vars.sumBorrowPlusEffects, 0);
         } else {
+        //總借款 > 抵押品
             return (Error.NO_ERROR, 0, vars.sumBorrowPlusEffects - vars.sumCollateral);
         }
     }
@@ -931,6 +938,8 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
       * @param cToken The address of the market (token) to list
       * @return uint 0=success, otherwise a failure. (See enum Error for details)
       */
+
+      /// hulk isListed
     function _supportMarket(CToken cToken) external returns (uint) {
         if (msg.sender != admin) {
             return fail(Error.UNAUTHORIZED, FailureInfo.SUPPORT_MARKET_OWNER_CHECK);
@@ -1218,6 +1227,8 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
             uint compAccrued = mul_(deltaBlocks, borrowSpeed);
             Double memory ratio = borrowAmount > 0 ? fraction(compAccrued, borrowAmount) : Double({mantissa: 0});
             borrowState.index = safe224(add_(Double({mantissa: borrowState.index}), ratio).mantissa, "new index exceeds 224 bits");
+
+
             borrowState.block = blockNumber;
         } else if (deltaBlocks > 0) {
             borrowState.block = blockNumber;

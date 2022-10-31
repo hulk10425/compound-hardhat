@@ -313,7 +313,10 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
              */
 
             //***關鍵兌換率 */
+            //池子內還未被借出去的 ERC20  Token
             uint totalCash = getCashPrior();
+            // totalBorrows 所有借款人所借的ERC20Token + 利息
+            //一般來說 exchangeRate 會越來越高！
             uint cashPlusBorrowsMinusReserves = totalCash + totalBorrows - totalReserves;
             uint exchangeRate = cashPlusBorrowsMinusReserves * expScale / _totalSupply;
 
@@ -501,6 +504,7 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
         require(redeemTokensIn == 0 || redeemAmountIn == 0, "one of redeemTokensIn or redeemAmountIn must be zero");
 
         /* exchangeRate = invoke Exchange Rate Stored() */
+        //O
         Exp memory exchangeRate = Exp({mantissa: exchangeRateStoredInternal() });
 
         uint redeemTokens;
@@ -520,11 +524,14 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
              *  redeemTokens = redeemAmountIn / exchangeRate
              *  redeemAmount = redeemAmountIn
              */
+             // 1個 cUSDT 可以換 1.5個USDT
+             //現在我想換100 USDT回來，所以會需要 100 / 1.5 個cUSDT
             redeemTokens = div_(redeemAmountIn, exchangeRate);
             redeemAmount = redeemAmountIn;
         }
 
         /* Fail if redeem not allowed */
+        //O
         uint allowed = comptroller.redeemAllowed(address(this), redeemer, redeemTokens);
         if (allowed != 0) {
             revert RedeemComptrollerRejection(allowed);
@@ -558,6 +565,7 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
          *  On success, the cToken has redeemAmount less of cash.
          *  doTransferOut reverts if anything goes wrong, since we can't be sure if side effects occurred.
          */
+        //X
         doTransferOut(redeemer, redeemAmount);
 
         /* We emit a Transfer event, and a Redeem event */
@@ -565,6 +573,7 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
         emit Redeem(redeemer, redeemAmount, redeemTokens);
 
         /* We call the defense hook */
+        //O
         comptroller.redeemVerify(address(this), redeemer, redeemAmount, redeemTokens);
     }
 
@@ -663,6 +672,7 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
      */
     function repayBorrowFresh(address payer, address borrower, uint repayAmount) internal returns (uint) {
         /* Fail if repayBorrow not allowed */
+        //X
         uint allowed = comptroller.repayBorrowAllowed(address(this), payer, borrower, repayAmount);
         if (allowed != 0) {
             revert RepayBorrowComptrollerRejection(allowed);
@@ -674,33 +684,21 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
         }
 
         /* We fetch the amount the borrower owes, with accumulated interest */
+        //借款總額 含利息
+        //O
         uint accountBorrowsPrev = borrowBalanceStoredInternal(borrower);
 
         /* If repayAmount == -1, repayAmount = accountBorrows */
+        // -1 會溢位成uint 最大值
         uint repayAmountFinal = repayAmount == type(uint).max ? accountBorrowsPrev : repayAmount;
 
-        /////////////////////////
-        // EFFECTS & INTERACTIONS
-        // (No safe failures beyond this point)
-
-        /*
-         * We call doTransferIn for the payer and the repayAmount
-         *  Note: The cToken must handle variations between ERC-20 and ETH underlying.
-         *  On success, the cToken holds an additional repayAmount of cash.
-         *  doTransferIn reverts if anything goes wrong, since we can't be sure if side effects occurred.
-         *   it returns the amount actually transferred, in case of a fee.
-         */
         uint actualRepayAmount = doTransferIn(payer, repayAmountFinal);
 
-        /*
-         * We calculate the new borrower and total borrow balances, failing on underflow:
-         *  accountBorrowsNew = accountBorrows - actualRepayAmount
-         *  totalBorrowsNew = totalBorrows - actualRepayAmount
-         */
         uint accountBorrowsNew = accountBorrowsPrev - actualRepayAmount;
         uint totalBorrowsNew = totalBorrows - actualRepayAmount;
 
         /* We write the previously calculated values into storage */
+        //O 講 BorrowSnapshot
         accountBorrows[borrower].principal = accountBorrowsNew;
         accountBorrows[borrower].interestIndex = borrowIndex;
         totalBorrows = totalBorrowsNew;
