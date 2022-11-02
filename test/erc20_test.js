@@ -345,8 +345,8 @@ describe('CToken', function () {
 
     });
 
-        // 第四題 調整A的 collateral factor， 讓User1 被 User2 清算
-    it("fails when lidquity part1 not work ", async () => {
+    // 第五題 調整 oracle 中的 token B 的價格 讓User1 被 User2 清算
+    it("fails when lidquity part2 not work ", async () => {
 
       const { CERC20Deploy, anotherCERC20Deploy, ERC20Deploy , anotherERC20Deploy,comptrollerDeploy, oracleDeploy} = await loadFixture(deployAllModel);
 
@@ -396,9 +396,8 @@ describe('CToken', function () {
       // singer1 借 50 A Token出來
       await CERC20Deploy.connect(singer[0]).borrow(ethers.utils.parseUnits("50", 18));
 
-      // 重設抵押率
-      await comptrollerDeploy._setCollateralFactor(anotherCERC20Deploy.address,NEW_COLLATERAL_FACTOR);
-
+      // 重設TokenB 價格 為50
+      await oracleDeploy.setUnderlyingPrice(anotherCERC20Deploy.address,ethers.utils.parseUnits("50", 18))
       // 設定 代償比率
       // 預設最低是 5%
       // closeFactorMinMantissa = 0.05e18; // 0.05
