@@ -489,24 +489,31 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
         }
 
         uint borrowBalance = CToken(cTokenBorrowed).borrowBalanceStored(borrower);
+        console.log("borrowBalance:");
+        console.log(borrowBalance);
 
         /* allow accounts to be liquidated if the market is deprecated */
         if (isDeprecated(CToken(cTokenBorrowed))) {
+            console.log("0:");
             require(borrowBalance >= repayAmount, "Can not repay more than the total borrow");
         } else {
             /* The borrower must have shortfall in order to be liquidatable */
             (Error err, , uint shortfall) = getAccountLiquidityInternal(borrower);
             if (err != Error.NO_ERROR) {
+                console.log("1:");
+       
                 return uint(err);
             }
 
             if (shortfall == 0) {
+                console.log("2:");
                 return uint(Error.INSUFFICIENT_SHORTFALL);
             }
 
             /* The liquidator may not repay more than what is allowed by the closeFactor */
             uint maxClose = mul_ScalarTruncate(Exp({mantissa: closeFactorMantissa}), borrowBalance);
             if (repayAmount > maxClose) {
+                console.log("3:");
                 return uint(Error.TOO_MUCH_REPAY);
             }
         }
