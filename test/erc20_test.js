@@ -254,6 +254,7 @@ describe('CToken', function () {
     });
 
     // 第四題 調整A的 collateral factor， 讓User1 被 User2 清算
+    // 為了計算方便 已事先將 protocolSeizeShareMantissa設為 0，表示compound本身不會拿任何reserve
     it("fails when lidquity part1 not work ", async () => {
 
       const { CERC20Deploy, anotherCERC20Deploy, ERC20Deploy , anotherERC20Deploy,comptrollerDeploy, oracleDeploy} = await loadFixture(deployAllModel);
@@ -304,7 +305,7 @@ describe('CToken', function () {
       // singer1 借 50 A Token出來
       await CERC20Deploy.connect(singer[0]).borrow(ethers.utils.parseUnits("50", 18));
 
-      // 重設抵押率
+      // 重設抵押率，從50% --> 30%
       await comptrollerDeploy._setCollateralFactor(anotherCERC20Deploy.address,NEW_COLLATERAL_FACTOR);
 
       // 設定 代償比率
@@ -317,7 +318,7 @@ describe('CToken', function () {
 
       // 設定清算人的激勵費 10%
       // 沒有預設值
-      await comptrollerDeploy._setLiquidationIncentive(ethers.utils.parseUnits("0.1", 18))
+      await comptrollerDeploy._setLiquidationIncentive(ethers.utils.parseUnits("1.1", 18))
 
       await ERC20Deploy.connect(singer[1]).approve(CERC20Deploy.address, ethers.utils.parseUnits("100", 18));
 
@@ -330,22 +331,19 @@ describe('CToken', function () {
         anotherCERC20Deploy.address
       )
 
-      const singer2BTokenBalance = await anotherCERC20Deploy.balanceOf(singer[1].address);
-      console.log(singer2BTokenBalance);
+      // user2 原本有 200A 幫 user1還 25A後，應該只剩 175A
+      const singer2ATokenBalance = await ERC20Deploy.balanceOf(singer[1].address);
+      expect(singer2ATokenBalance).to.equal(ethers.utils.parseUnits("175", 18));
 
-      const singer2BTokenBalance2 = await CERC20Deploy.balanceOf(singer[1].address);
-      console.log(singer2BTokenBalance2);
+      // user2 代還款後，會取得0.275個cBToken
+      const singer2cBTokenBalance = await anotherCERC20Deploy.balanceOf(singer[1].address);
+      expect(singer2cBTokenBalance).to.equal(ethers.utils.parseUnits("0.275", 18));
 
-      const singer2BTokenBalance3 = await anotherERC20Deploy.balanceOf(singer[1].address);
-      console.log(singer2BTokenBalance3);
-
-      const singer2BTokenBalance4 = await ERC20Deploy.balanceOf(singer[1].address);
-      console.log(singer2BTokenBalance4);
-      
 
     });
 
     // 第五題 調整 oracle 中的 token B 的價格 讓User1 被 User2 清算
+    // 為了計算方便 已事先將 protocolSeizeShareMantissa設為 0，表示compound本身不會拿任何reserve
     it("fails when lidquity part2 not work ", async () => {
 
       const { CERC20Deploy, anotherCERC20Deploy, ERC20Deploy , anotherERC20Deploy,comptrollerDeploy, oracleDeploy} = await loadFixture(deployAllModel);
@@ -355,9 +353,7 @@ describe('CToken', function () {
       const MINT_AMOUNT = 1000n * DECIMAL;
     
       const COLLATERAL_FACTOR = ethers.utils.parseUnits("0.5", 18);
-
-      const NEW_COLLATERAL_FACTOR = ethers.utils.parseUnits("0.3", 18);
-      
+  
       //第一種ERC20 Token mint
       await ERC20Deploy.approve(CERC20Deploy.address,MINT_AMOUNT);
 
@@ -396,7 +392,7 @@ describe('CToken', function () {
       // singer1 借 50 A Token出來
       await CERC20Deploy.connect(singer[0]).borrow(ethers.utils.parseUnits("50", 18));
 
-      // 重設TokenB 價格 為50
+      // 重設TokenB 價格 從100調整為50
       await oracleDeploy.setUnderlyingPrice(anotherCERC20Deploy.address,ethers.utils.parseUnits("50", 18))
       // 設定 代償比率
       // 預設最低是 5%
@@ -408,7 +404,7 @@ describe('CToken', function () {
 
       // 設定清算人的激勵費 10%
       // 沒有預設值
-      await comptrollerDeploy._setLiquidationIncentive(ethers.utils.parseUnits("0.1", 18))
+      await comptrollerDeploy._setLiquidationIncentive(ethers.utils.parseUnits("1.1", 18))
 
       await ERC20Deploy.connect(singer[1]).approve(CERC20Deploy.address, ethers.utils.parseUnits("100", 18));
 
@@ -421,22 +417,18 @@ describe('CToken', function () {
         anotherCERC20Deploy.address
       )
 
-      const singer2BTokenBalance = await anotherCERC20Deploy.balanceOf(singer[1].address);
-      console.log(singer2BTokenBalance);
 
-      const singer2BTokenBalance2 = await CERC20Deploy.balanceOf(singer[1].address);
-      console.log(singer2BTokenBalance2);
+      // user2 原本有 200A 幫 user1還 25A後，應該只剩 175A
+      const singer2ATokenBalance = await ERC20Deploy.balanceOf(singer[1].address);
+      expect(singer2ATokenBalance).to.equal(ethers.utils.parseUnits("175", 18));
 
-      const singer2BTokenBalance3 = await anotherERC20Deploy.balanceOf(singer[1].address);
-      console.log(singer2BTokenBalance3);
 
-      const singer2BTokenBalance4 = await ERC20Deploy.balanceOf(singer[1].address);
-      console.log(singer2BTokenBalance4);
-      
+      // user2 代還款後，會取得0.55個cBToken
+      const singer2cBTokenBalance = await anotherCERC20Deploy.balanceOf(singer[1].address);
+      expect(singer2cBTokenBalance).to.equal(ethers.utils.parseUnits("0.55", 18));
+
 
     });
-
-
 
   });
 });
