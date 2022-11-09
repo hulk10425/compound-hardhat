@@ -116,6 +116,50 @@ describe('CToken', function () {
       return { CERC20Deploy, anotherCERC20Deploy, ERC20Deploy, anotherERC20Deploy, comptrollerDeploy, oracleDeploy};
     }
 
+    async function deploySixNeedModel() {
+      // uni = await ethers.getContractAt("EIP20Interface","0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984");
+      // usdc = await ethers.getContractAt("EIP20Interface","0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
+
+      const [owner] = await ethers.getSigners();
+
+      const { comptrollerDeploy } = await loadFixture(deployComptroller);
+
+      const { irModelDeploy } = await loadFixture(deployInterestRateModel);
+
+      const { oracleDeploy} = await loadFixture(deployOracle);
+
+      //單純使用CErc20Immutalbe
+      const CERC20 = await hre.ethers.getContractFactory("CErc20Immutable");
+
+      // ethers.utils.parseUnits("1",18) 這表示設定成 A token 和 cA token 是 1:1
+      const cUNIDeploy = await CERC20.deploy(
+        "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
+        comptrollerDeploy.address,
+        irModelDeploy.address,
+        ethers.utils.parseUnits("1",18),// exchange rate
+        "cUNIToken",
+        "cUNI",
+        18,
+        owner.address
+      );
+
+      const cUSDCDeploy = await CERC20.deploy(
+        "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+        comptrollerDeploy.address,
+        irModelDeploy.address,
+        ethers.utils.parseUnits("1",18),// exchange rate
+        "cHulkToken2",
+        "cHulk2",
+        6,
+        owner.address
+      );
+
+      //部署完成後，將合約物件回傳，等待邏輯測試
+      await cUNIDeploy.deployed();   
+      await cUSDCDeploy.deployed();
+      return { cUNIDeploy, cUSDCDeploy, comptrollerDeploy, oracleDeploy};
+    }
+
     // 第四題 調整A的 collateral factor， 讓User1 被 User2 清算
     // 為了計算方便 已事先將 protocolSeizeShareMantissa設為 0，表示compound本身不會拿任何reserve
     it("fails when lidquity part1 not work ", async () => {
@@ -296,13 +340,16 @@ describe('CToken', function () {
     // 第六題
     it("six", async () => {
 
-      // 先找到擁有大量 USDC以及UNI的帳號
-      // 有很多UNI
       let usdcTransferAmount = ethers.utils.parseUnits("50000", 6);
       let uniTransferAmount = ethers.utils.parseUnits("2000", 18);
+      let usdcMintAmount = ethers.utils.parseUnits("50000", 6);
+      let uniMintAmount = ethers.utils.parseUnits("2000", 18);
+
+      let uniContractAddress = "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984";
+      let usdcContractAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
       accounts = await ethers.getSigners();
-      uni = await ethers.getContractAt("EIP20Interface","0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984");
-      usdc = await ethers.getContractAt("EIP20Interface","0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
+      uni = await ethers.getContractAt("EIP20Interface",uniContractAddress); //直接拿鏈上有的合約是這樣寫
+      usdc = await ethers.getContractAt("EIP20Interface",usdcContractAddress);
 
       const impersonatedSignerUNI = await ethers.getImpersonatedSigner("0x33Ddd548FE3a082d753E5fE721a26E1Ab43e3598");
       const impersonatedSignerUSDC = await ethers.getImpersonatedSigner("0xAe2D4617c862309A3d75A0fFB358c7a5009c673F");
@@ -318,16 +365,51 @@ describe('CToken', function () {
       console.log("usdcBalanceOfSinger2");
       console.log(usdcBalanceOfSinger2);
 
+      const COLLATERAL_FACTOR = ethers.utils.parseUnits("0.5", 18);
+      const CLOSE_FACTOR = ethers.utils.parseUnits("0.5", 18);
+      const {cUNIDeploy, cUSDCDeploy, comptrollerDeploy, oracleDeploy} = await loadFixture(deploySixNeedModel);
+
+      // 設定 UNI Token 價格為 10
+      await oracleDeploy.setUnderlyingPrice(uniContractAddress,ethers.utils.parseUnits("10", 18))
+      // 設定 USDC Token 價格為 1
+      await oracleDeploy.setUnderlyingPrice(usdcContractAddress,ethers.utils.parseUnits("1", 18))
+
+      // comptroller要正常運作需要設定 oracle 以及 colleateral factor
+      await comptrollerDeploy._setPriceOracle(oracleDeploy.address);
+      // 設定cUSDC池的 Collateral Factor 為50%
+      await comptrollerDeploy._setCollateralFactor(cUSDCDeploy.address, COLLATERAL_FACTOR );
+       //  Singer1 創造cUSDC池 mint 10000顆 cUSDC 以及 Singer2 創造cUNI池 mint 1000顆
+      // UNI Token mint
+
+      await comptrollerDeploy._supportMarket(cUNIDeploy.address);
+      await comptrollerDeploy._supportMarket(cUSDCDeploy.address);
+
+
+      await usdc.approve(cUSDCDeploy.address, usdcMintAmount);
+      //由Singer1先mint usdc 進池子裡
+      await cUSDCDeploy.mint(usdcMintAmount);
+
+      singer1cUSDCBalance =  await cUSDCDeploy.balanceOf(accounts[0]);
+      console.log("singer1cUSDCBalance");
+      console.log(singer1cUSDCBalance);
+
+
+
+      
+      // //第二種ERC20 Token mint
+      // await anotherERC20Deploy.approve(anotherCERC20Deploy.address,MINT_AMOUNT);
+      
+      // //由owner先放一些BToken 進池子裡
+      // await anotherCERC20Deploy.mint(MINT_AMOUNT);
+
+      
 
 
 
 
-      //有很多USDC
-      // 0x8c1A4C98C470900567FB9e764243c89cDa79400C
-      // const impersonatedSigner = await ethers.getImpersonatedSigner("0x1234567890123456789012345678901234567890");
 
 
-      // 轉錢到Singer1 50000顆 USDC、1000顆UNI 以及 Singer2 2000顆UNI
+
 
       //  設定comptroller、oracle USDC 1元、 UNI 10元 collateral factor 50%、exchange rate 1
       //  Singer1 創造cUSDC池 mint 10000顆 cUSDC 以及 Singer2 創造cUNI池 mint 1000顆
