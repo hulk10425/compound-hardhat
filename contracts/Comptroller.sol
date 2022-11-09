@@ -380,6 +380,7 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
             return uint(err);
         }
         if (shortfall > 0) {
+            console.log("shortfall > 0");
             console.log(shortfall);
             console.log(5);
             return uint(Error.INSUFFICIENT_LIQUIDITY);
