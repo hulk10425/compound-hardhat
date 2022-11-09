@@ -119,6 +119,7 @@ describe('CToken', function () {
     async function deploySixNeedModel() {
       // uni = await ethers.getContractAt("EIP20Interface","0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984");
       // usdc = await ethers.getContractAt("EIP20Interface","0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
+      LendingPoolAddressesProvider = "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5";
 
       const accounts = await ethers.getSigners();
 
@@ -130,6 +131,12 @@ describe('CToken', function () {
 
       //單純使用CErc20Immutalbe
       const CERC20 = await hre.ethers.getContractFactory("CErc20Immutable");
+
+      const FlashLoan = await hre.ethers.getContractFactory("FlashLoan");
+
+      const FlashLoanDeploy = await FlashLoan.deploy(
+        LendingPoolAddressesProvider
+      );
 
       // ethers.utils.parseUnits("1",18) 這表示設定成 A token 和 cA token 是 1:1
       const cUNIDeploy = await CERC20.deploy(
@@ -155,9 +162,10 @@ describe('CToken', function () {
       );
 
       //部署完成後，將合約物件回傳，等待邏輯測試
+      await FlashLoanDeploy.deployed();
       await cUNIDeploy.deployed();   
       await cUSDCDeploy.deployed();
-      return {accounts, cUNIDeploy, cUSDCDeploy, comptrollerDeploy, oracleDeploy};
+      return {accounts, FlashLoanDeploy,cUNIDeploy, cUSDCDeploy, comptrollerDeploy, oracleDeploy};
     }
 
     // 第四題 調整A的 collateral factor， 讓User1 被 User2 清算
@@ -347,7 +355,7 @@ describe('CToken', function () {
 
       let uniContractAddress = "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984";
       let usdcContractAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-      const {accounts,cUNIDeploy, cUSDCDeploy, comptrollerDeploy, oracleDeploy} = await loadFixture(deploySixNeedModel);
+      const {accounts, FlashLoanDeploy,cUNIDeploy, cUSDCDeploy, comptrollerDeploy, oracleDeploy} = await loadFixture(deploySixNeedModel);
       uni = await ethers.getContractAt("EIP20Interface",uniContractAddress); //直接拿鏈上有的合約是這樣寫
       usdc = await ethers.getContractAt("EIP20Interface",usdcContractAddress);
 

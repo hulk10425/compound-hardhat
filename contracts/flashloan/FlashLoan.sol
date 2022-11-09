@@ -1,22 +1,8 @@
 // contracts/FlashLoanV2.sol
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.10;
 
 import "../EIP20Interface.sol";
-
-interface IFlashLoanReceiver {
-  function executeOperation(
-    address[] calldata assets,
-    uint256[] calldata amounts,
-    uint256[] calldata premiums,
-    address initiator,
-    bytes calldata params
-  ) external returns (bool);
-
-  function ADDRESSES_PROVIDER() external view returns (ILendingPoolAddressesProvider);
-
-  function LENDING_POOL() external view returns (ILendingPool);
-}
 
 interface ILendingPool {
   /**
@@ -364,26 +350,6 @@ interface ILendingPool {
   function setConfiguration(address reserve, uint256 configuration) external;
 
   /**
-   * @dev Returns the configuration of the reserve
-   * @param asset The address of the underlying asset of the reserve
-   * @return The configuration of the reserve
-   **/
-  function getConfiguration(address asset)
-    external
-    view
-    returns (DataTypes.ReserveConfigurationMap memory);
-
-  /**
-   * @dev Returns the configuration of the user across all the reserves
-   * @param user The user address
-   * @return The configuration of the user
-   **/
-  function getUserConfiguration(address user)
-    external
-    view
-    returns (DataTypes.UserConfigurationMap memory);
-
-  /**
    * @dev Returns the normalized income normalized income of the reserve
    * @param asset The address of the underlying asset of the reserve
    * @return The reserve's normalized income
@@ -396,13 +362,6 @@ interface ILendingPool {
    * @return The reserve normalized variable debt
    */
   function getReserveNormalizedVariableDebt(address asset) external view returns (uint256);
-
-  /**
-   * @dev Returns the state and configuration of the reserve
-   * @param asset The address of the underlying asset of the reserve
-   * @return The state of the reserve
-   **/
-  function getReserveData(address asset) external view returns (DataTypes.ReserveData memory);
 
   function finalizeTransfer(
     address asset,
@@ -473,13 +432,37 @@ interface ILendingPoolAddressesProvider {
   function setLendingRateOracle(address lendingRateOracle) external;
 }
 
+interface IFlashLoanReceiver {
+  function executeOperation(
+    address[] calldata assets,
+    uint256[] calldata amounts,
+    uint256[] calldata premiums,
+    address initiator,
+    bytes calldata params
+  ) external returns (bool);
+
+  function ADDRESSES_PROVIDER() external view returns (ILendingPoolAddressesProvider);
+
+  function LENDING_POOL() external view returns (ILendingPool);
+}
+
 contract FlashLoan is IFlashLoanReceiver {
     address payable owner;
+    // address private LENDING_POOL = 0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9;
     constructor(address _addressProvider)
         public
         IFlashLoanReceiver(ILendingPoolAddressesProvider(_addressProvider))
     {
         owner = payable(msg.sender);
+    }
+
+
+    function LENDING_POOL() public view returns (ILendingPool){
+      return ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
+    }
+
+    function ADDRESSES_PROVIDER() external view returns (ILendingPoolAddressesProvider) {
+      return ILendingPoolAddressesProvider(0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5);
     }
 
     /**
@@ -503,9 +486,11 @@ contract FlashLoan is IFlashLoanReceiver {
         // these amounts.
 
         // Approve the LendingPool contract allowance to *pull* the owed amount
+  
         for (uint256 i = 0; i < assets.length; i++) {
             uint256 amountOwing = amounts[i] + (premiums[i]);
-            EIP20Interface(assets[i]).approve(address(LENDING_POOL), amountOwing);
+       
+            EIP20Interface(assets[i]).approve(address(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9), amountOwing);
         }
 
         return true;
@@ -528,7 +513,7 @@ contract FlashLoan is IFlashLoanReceiver {
         bytes memory params = "";
         uint16 referralCode = 0;
 
-        LENDING_POOL.flashLoan(
+        ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9).flashLoan(
             receiverAddress,
             assets,
             amounts,
