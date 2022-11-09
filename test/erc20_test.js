@@ -134,9 +134,7 @@ describe('CToken', function () {
 
       const FlashLoan = await hre.ethers.getContractFactory("FlashLoan");
 
-      const FlashLoanDeploy = await FlashLoan.deploy(
-        LendingPoolAddressesProvider
-      );
+      const FlashLoanDeploy = await FlashLoan.deploy();
 
       // ethers.utils.parseUnits("1",18) 這表示設定成 A token 和 cA token 是 1:1
       const cUNIDeploy = await CERC20.deploy(

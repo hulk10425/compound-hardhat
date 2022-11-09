@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "../EIP20Interface.sol";
+import "./EIP20Interface.sol";
 
 interface ILendingPool {
   /**
@@ -447,12 +447,10 @@ interface IFlashLoanReceiver {
 }
 
 contract FlashLoan is IFlashLoanReceiver {
+  
     address payable owner;
     // address private LENDING_POOL = 0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9;
-    constructor(address _addressProvider)
-        public
-        IFlashLoanReceiver(ILendingPoolAddressesProvider(_addressProvider))
-    {
+    constructor() public {
         owner = payable(msg.sender);
     }
 
