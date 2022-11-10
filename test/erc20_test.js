@@ -346,7 +346,7 @@ describe('CToken', function () {
     // 第六題
     it("six", async () => {
 
-      let usdcTransferAmount = ethers.utils.parseUnits("50000", 6);
+      let usdcTransferAmount = ethers.utils.parseUnits("60000", 6);
       let uniTransferAmount = ethers.utils.parseUnits("2000", 18);
       let usdcMintAmount = ethers.utils.parseUnits("50000", 6);
       let uniMintAmount = ethers.utils.parseUnits("2000", 18);
@@ -433,10 +433,16 @@ describe('CToken', function () {
       console.log("singer2USDCBalance");
       console.log(singer2USDCBalance);
        //重設UNI價格 從10調整為$6.2
-      await oracleDeploy.setUnderlyingPrice(cUNIDeploy.address,ethers.utils.parseUnits("6.2", 18))
+      await oracleDeploy.setUnderlyingPrice(cUNIDeploy.address,ethers.utils.parseUnits("6.2", 18));
       //開始用flash loan借錢
-
+      // requestFlashLoan(address _token, uint256 _amount) 
       
+      await usdc.transfer(FlashLoanDeploy.address, ethers.utils.parseUnits("10", 6));
+      
+
+      usdcBalance =  await FlashLoanDeploy.requestFlashLoan(usdc.address,ethers.utils.parseUnits("2500", 6));
+      console.log("usdcBalance");
+      console.log(usdcBalance);
       // 將 UNI價格調整為 6.2 ， Singer2 成為被清算人
       // Signer1 執行AAve flash loan 借USDC後 償還 Singer2借的 2500USDC（假設 Close Factor是 50%）
       // 償還完後，Signer1 取得 cUNI後，接下來 redeem 回 UNI

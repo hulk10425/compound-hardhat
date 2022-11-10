@@ -3,6 +3,7 @@
 pragma solidity ^0.8.10;
 
 import "./EIP20Interface.sol";
+import "hardhat/console.sol";
 
 interface ILendingPool {
   /**
@@ -484,13 +485,10 @@ contract FlashLoan is IFlashLoanReceiver {
         // these amounts.
 
         // Approve the LendingPool contract allowance to *pull* the owed amount
-  
-        for (uint256 i = 0; i < assets.length; i++) {
-            uint256 amountOwing = amounts[i] + (premiums[i]);
-       
-            EIP20Interface(assets[i]).approve(address(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9), amountOwing);
-        }
 
+        uint256 amountOwing = amounts[0] + (premiums[0]);
+        EIP20Interface(assets[0]).approve(address(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9), amountOwing);
+  
         return true;
     }
 
@@ -512,6 +510,10 @@ contract FlashLoan is IFlashLoanReceiver {
         uint16 referralCode = 0;
         //找ILendingPool 實作 flashLoan 回call excuteOperation的那一段
         // https://github.com/aave/protocol-v2/blob/master/contracts/protocol/lendingpool/LendingPool.sol
+       
+
+        // 0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9 proxy
+        // 0xC6845a5C768BF8D7681249f8927877Efda425baf delegate
         ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9).flashLoan(
             receiverAddress,
             assets,
@@ -521,6 +523,25 @@ contract FlashLoan is IFlashLoanReceiver {
             params,
             referralCode
         );
+   
+
+        
+        //照理說 這時候就會借到 2500顆USDC 
+      
+      // Signer1 執行AAve flash loan 借USDC後 償還 Singer2借的 2500USDC（假設 Close Factor是 50%）
+      // 償還完後，Signer1 取得 cUNI後，接下來 redeem 回 UNI
+      // Singer1 到uniswap 上 將UNI換成USDC
+      // Singer1 償還 在Aave上面借的USDC + premium
+      // 照理說會有剩餘，這時就完成套利囉
+
+          //   // singer2 幫 singer1 還一半
+    //   // cTokenColleateral  cB Token --> 清算人決定要哪種 被清算人獎勵
+    //   await CERC20Deploy.connect(singer[1]).liquidateBorrow(
+    //     singer[0].address,
+    //     ethers.utils.parseUnits("25", 18),
+    //     anotherCERC20Deploy.address
+    //   )
+
     }
 
     function getBalance(address _tokenAddress) external view returns (uint256) {
