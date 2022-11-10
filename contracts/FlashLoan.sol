@@ -450,16 +450,16 @@ contract FlashLoan is IFlashLoanReceiver {
   
     address payable owner;
     // address private LENDING_POOL = 0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9;
-    constructor() public {
+    constructor() {
         owner = payable(msg.sender);
     }
 
 
-    function LENDING_POOL() public view returns (ILendingPool){
+    function LENDING_POOL() public pure returns (ILendingPool){
       return ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
     }
 
-    function ADDRESSES_PROVIDER() external view returns (ILendingPoolAddressesProvider) {
+    function ADDRESSES_PROVIDER() external pure returns (ILendingPoolAddressesProvider) {
       return ILendingPoolAddressesProvider(0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5);
     }
 
@@ -510,7 +510,8 @@ contract FlashLoan is IFlashLoanReceiver {
         address onBehalfOf = address(this);
         bytes memory params = "";
         uint16 referralCode = 0;
-
+        //找ILendingPool 實作 flashLoan 回call excuteOperation的那一段
+        // https://github.com/aave/protocol-v2/blob/master/contracts/protocol/lendingpool/LendingPool.sol
         ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9).flashLoan(
             receiverAddress,
             assets,
