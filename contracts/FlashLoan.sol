@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 
 import "./EIP20Interface.sol";
 import "hardhat/console.sol";
+import "./CTokenInterfaces.sol";
 
 interface ILendingPool {
   /**
@@ -446,13 +447,97 @@ interface IFlashLoanReceiver {
 
   function LENDING_POOL() external view returns (ILendingPool);
 }
+interface IUniswapV3SwapCallback {
+    function uniswapV3SwapCallback(
+        int256 amount0Delta,
+        int256 amount1Delta,
+        bytes calldata data
+    ) external;
+}
+interface ISwapRouter is IUniswapV3SwapCallback {
+    struct ExactInputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        uint24 fee;
+        address recipient;
+        uint256 deadline;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+        uint160 sqrtPriceLimitX96;
+    }
+
+    /// @notice Swaps `amountIn` of one token for as much as possible of another token
+    /// @param params The parameters necessary for the swap, encoded as `ExactInputSingleParams` in calldata
+    /// @return amountOut The amount of the received token
+    function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
+
+    struct ExactInputParams {
+        bytes path;
+        address recipient;
+        uint256 deadline;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+    }
+
+    /// @notice Swaps `amountIn` of one token for as much as possible of another along the specified path
+    /// @param params The parameters necessary for the multi-hop swap, encoded as `ExactInputParams` in calldata
+    /// @return amountOut The amount of the received token
+    function exactInput(ExactInputParams calldata params) external payable returns (uint256 amountOut);
+
+    struct ExactOutputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        uint24 fee;
+        address recipient;
+        uint256 deadline;
+        uint256 amountOut;
+        uint256 amountInMaximum;
+        uint160 sqrtPriceLimitX96;
+    }
+
+    /// @notice Swaps as little as possible of one token for `amountOut` of another token
+    /// @param params The parameters necessary for the swap, encoded as `ExactOutputSingleParams` in calldata
+    /// @return amountIn The amount of the input token
+    function exactOutputSingle(ExactOutputSingleParams calldata params) external payable returns (uint256 amountIn);
+
+    struct ExactOutputParams {
+        bytes path;
+        address recipient;
+        uint256 deadline;
+        uint256 amountOut;
+        uint256 amountInMaximum;
+    }
+
+    /// @notice Swaps as little as possible of one token for `amountOut` of another along the specified path (reversed)
+    /// @param params The parameters necessary for the multi-hop swap, encoded as `ExactOutputParams` in calldata
+    /// @return amountIn The amount of the input token
+    function exactOutput(ExactOutputParams calldata params) external payable returns (uint256 amountIn);
+}
+
+
 
 contract FlashLoan is IFlashLoanReceiver {
+  struct ExactInputSingleParams {
+    address tokenIn;
+    address tokenOut;
+    uint24 fee;
+    address recipient;
+    uint256 deadline;
+    uint256 amountIn;
+    uint256 amountOutMinimum;
+    uint160 sqrtPriceLimitX96;
+  }
   
     address payable owner;
+    address payable cUNIAddress;
+    address payable cUSDCAddress;
+    address payable poorGuyAddress;
     // address private LENDING_POOL = 0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9;
-    constructor() {
+    constructor(address cUNI, address cUSDC, address poorGuy) {
         owner = payable(msg.sender);
+        cUNIAddress = payable(cUNI);
+        cUSDCAddress = payable(cUSDC);
+        poorGuyAddress = payable(poorGuy);
     }
 
 
@@ -485,9 +570,40 @@ contract FlashLoan is IFlashLoanReceiver {
         // these amounts.
 
         // Approve the LendingPool contract allowance to *pull* the owed amount
+        // 確定有借到錢！
+        uint256 usdcB =  EIP20Interface(assets[0]).balanceOf(address(this));
+        console.log(usdcB);
+        
+        EIP20Interface(assets[0]).approve(cUSDCAddress, 2500 * 1e6);
+
+        CErc20Interface(cUSDCAddress).liquidateBorrow(
+          poorGuyAddress,
+          2500 * 1e6,
+          CTokenInterface(cUNIAddress) 
+        );
+
+        //現在合約本人 拿到 cUNI token
+
+        
+
+  //       ISwapRouter.ExactInputSingleParams memory swapParams =
+  // ISwapRouter.ExactInputSingleParams({
+  //   tokenIn: UNI_ADDRESS,
+  //   tokenOut: USDC_ADDRESS,
+  //   fee: 3000, // 0.3%
+  //   recipient: address(this),
+  //   deadline: block.timestamp,
+  //   amountIn: uniAmount,
+  //   amountOutMinimum: 0,
+  //   sqrtPriceLimitX96: 0
+  // });
+
+
 
         uint256 amountOwing = amounts[0] + (premiums[0]);
         EIP20Interface(assets[0]).approve(address(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9), amountOwing);
+
+
   
         return true;
     }

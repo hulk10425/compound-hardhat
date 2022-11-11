@@ -134,8 +134,6 @@ describe('CToken', function () {
 
       const FlashLoan = await hre.ethers.getContractFactory("FlashLoan");
 
-      const FlashLoanDeploy = await FlashLoan.deploy();
-
       // ethers.utils.parseUnits("1",18) 這表示設定成 A token 和 cA token 是 1:1
       const cUNIDeploy = await CERC20.deploy(
         "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
@@ -159,6 +157,7 @@ describe('CToken', function () {
         accounts[0].address
       );
 
+      const FlashLoanDeploy = await FlashLoan.deploy();
       //部署完成後，將合約物件回傳，等待邏輯測試
       await FlashLoanDeploy.deployed();
       await cUNIDeploy.deployed();   
@@ -438,11 +437,15 @@ describe('CToken', function () {
       // requestFlashLoan(address _token, uint256 _amount) 
       
       await usdc.transfer(FlashLoanDeploy.address, ethers.utils.parseUnits("10", 6));
-      
 
-      usdcBalance =  await FlashLoanDeploy.requestFlashLoan(usdc.address,ethers.utils.parseUnits("2500", 6));
-      console.log("usdcBalance");
-      console.log(usdcBalance);
+          //   await CERC20Deploy.connect(singer[1]).liquidateBorrow(
+    //     singer[0].address,
+    //     ethers.utils.parseUnits("25", 18),
+    //     anotherCERC20Deploy.address
+    //   )
+      //要將 cUNI 及 cUSDC 地址傳進去
+      await FlashLoanDeploy.requestFlashLoan(usdc.address,ethers.utils.parseUnits("2500", 6));
+     
       // 將 UNI價格調整為 6.2 ， Singer2 成為被清算人
       // Signer1 執行AAve flash loan 借USDC後 償還 Singer2借的 2500USDC（假設 Close Factor是 50%）
       // 償還完後，Signer1 取得 cUNI後，接下來 redeem 回 UNI
