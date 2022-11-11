@@ -157,7 +157,10 @@ describe('CToken', function () {
         accounts[0].address
       );
 
-      const FlashLoanDeploy = await FlashLoan.deploy();
+      const FlashLoanDeploy = await FlashLoan.deploy(
+        cUNIDeploy.address,
+        cUSDCDeploy.address
+      );
       //部署完成後，將合約物件回傳，等待邏輯測試
       await FlashLoanDeploy.deployed();
       await cUNIDeploy.deployed();   
@@ -348,7 +351,7 @@ describe('CToken', function () {
       let usdcTransferAmount = ethers.utils.parseUnits("60000", 6);
       let uniTransferAmount = ethers.utils.parseUnits("2000", 18);
       let usdcMintAmount = ethers.utils.parseUnits("50000", 6);
-      let uniMintAmount = ethers.utils.parseUnits("2000", 18);
+      let uniMintAmount = ethers.utils.parseUnits("1000", 18);
 
       let uniContractAddress = "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984";
       let usdcContractAddress = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
@@ -365,11 +368,11 @@ describe('CToken', function () {
       await uni.connect(impersonatedSignerUNI).transfer(accounts[1].address,uniTransferAmount);
       let uniBalanceOfSinger2 = await uni.balanceOf(accounts[1].address);
       
-      console.log("usdcBalanceOfSinger1");
-      console.log(usdcBalanceOfSinger1);
+      // console.log("usdcBalanceOfSinger1");
+      // console.log(usdcBalanceOfSinger1);
 
-      console.log("uniBalanceOfSinger2");
-      console.log(uniBalanceOfSinger2);
+      // console.log("uniBalanceOfSinger2");
+      // console.log(uniBalanceOfSinger2);
 
       const COLLATERAL_FACTOR = ethers.utils.parseUnits("0.5", 18);
       const CLOSE_FACTOR = ethers.utils.parseUnits("0.5", 18);
@@ -400,10 +403,6 @@ describe('CToken', function () {
       // 設定清算人的激勵費 10%
       await comptrollerDeploy._setLiquidationIncentive(INCENTIVE_FACTOR)
 
-      
-
-      
-
       //  Singer1 創造cUSDC池 mint 50000顆 cUSDC 以及 Singer2 創造cUNI池 mint 2000顆
 
       //由Singer1先mint usdc 進池子裡
@@ -418,15 +417,14 @@ describe('CToken', function () {
       singer1cUSDCBalance =  await cUSDCDeploy.balanceOf(accounts[0].address);
       singer2cUNIBalance =  await cUNIDeploy.balanceOf(accounts[1].address);
 
-      console.log("singer1cUSDCBalance");
-      console.log(singer1cUSDCBalance);
+      // console.log("singer1cUSDCBalance");
+      // console.log(singer1cUSDCBalance);
 
-      console.log("singer2cUNIBalance");
-      console.log(singer2cUNIBalance);
-
+      // console.log("singer2cUNIBalance");
+      // console.log(singer2cUNIBalance);
 
       // Singer2 抵押 1000 UNI 借 5000顆 USDC
-      await cUSDCDeploy.connect(accounts[1]).borrow(ethers.utils.parseUnits("5000", 6));
+      await cUSDCDeploy.connect(accounts[1]).borrow(ethers.utils.parseUnits("5000", 7));
       
       singer2USDCBalance = await usdc.balanceOf(accounts[1].address);
       console.log("singer2USDCBalance");
@@ -434,16 +432,8 @@ describe('CToken', function () {
        //重設UNI價格 從10調整為$6.2
       await oracleDeploy.setUnderlyingPrice(cUNIDeploy.address,ethers.utils.parseUnits("6.2", 18));
       //開始用flash loan借錢
-      // requestFlashLoan(address _token, uint256 _amount) 
-      
-      await usdc.transfer(FlashLoanDeploy.address, ethers.utils.parseUnits("10", 6));
-
-          //   await CERC20Deploy.connect(singer[1]).liquidateBorrow(
-    //     singer[0].address,
-    //     ethers.utils.parseUnits("25", 18),
-    //     anotherCERC20Deploy.address
-    //   )
       //要將 cUNI 及 cUSDC 地址傳進去
+      await FlashLoanDeploy.setPoorGuy(accounts[1].address);
       await FlashLoanDeploy.requestFlashLoan(usdc.address,ethers.utils.parseUnits("2500", 6));
      
       // 將 UNI價格調整為 6.2 ， Singer2 成為被清算人

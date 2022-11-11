@@ -533,11 +533,10 @@ contract FlashLoan is IFlashLoanReceiver {
     address payable cUSDCAddress;
     address payable poorGuyAddress;
     // address private LENDING_POOL = 0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9;
-    constructor(address cUNI, address cUSDC, address poorGuy) {
+    constructor(address cUNI, address cUSDC) {
         owner = payable(msg.sender);
         cUNIAddress = payable(cUNI);
         cUSDCAddress = payable(cUSDC);
-        poorGuyAddress = payable(poorGuy);
     }
 
 
@@ -572,6 +571,8 @@ contract FlashLoan is IFlashLoanReceiver {
         // Approve the LendingPool contract allowance to *pull* the owed amount
         // 確定有借到錢！
         uint256 usdcB =  EIP20Interface(assets[0]).balanceOf(address(this));
+
+        console.log("usdcB");
         console.log(usdcB);
         
         EIP20Interface(assets[0]).approve(cUSDCAddress, 2500 * 1e6);
@@ -583,6 +584,11 @@ contract FlashLoan is IFlashLoanReceiver {
         );
 
         //現在合約本人 拿到 cUNI token
+        uint256 cUNIBalance =  CTokenInterface(cUNIAddress).balanceOf(address(this));
+
+        console.log(cUNIBalance);
+        // CErc20Interface(cUNI).redeem(redeemTokens);
+
 
         
 
@@ -606,6 +612,10 @@ contract FlashLoan is IFlashLoanReceiver {
 
   
         return true;
+    }
+
+    function setPoorGuy(address poorGuy) public {
+      poorGuyAddress = payable(poorGuy);
     }
 
     function requestFlashLoan(address _token, uint256 _amount) public {
@@ -682,3 +692,39 @@ contract FlashLoan is IFlashLoanReceiver {
 
     receive() external payable {}
 }
+
+
+    // it("fails when mint/redeem not work", async () => {
+
+    //   const { CERC20Deploy,ERC20Deploy ,comptrollerDeploy, oracleModel} = await loadFixture(deployAllModel);
+    //   const [owner] = await ethers.getSigners();
+      
+    //   const MINT_AMOUNT = 100n * DECIMAL;
+
+    //   await ERC20Deploy.approve(CERC20Deploy.address,MINT_AMOUNT);
+
+    //   await comptrollerDeploy._supportMarket(CERC20Deploy.address);
+
+    //   await CERC20Deploy.mint(MINT_AMOUNT);
+
+    //   const cerc20Erc20Balance = await ERC20Deploy.balanceOf(CERC20Deploy.address);
+    //   const adminCErc20Balance = await CERC20Deploy.balanceOf(owner.address);
+		
+    //   // 檢查 mint完後 cToken 的 A Token balance有沒有增加
+		// 	expect(cerc20Erc20Balance).to.equal(MINT_AMOUNT);
+    //   // 檢查 mint完後 admin cToken 餘額 有沒有 跟 mint amount一樣
+		// 	expect(adminCErc20Balance).to.equal(MINT_AMOUNT);
+
+    //   await CERC20Deploy.redeem(MINT_AMOUNT);
+
+    //   // 檢查 redeem完後 cToken 的 A Token balance有沒有 歸零
+    //   const newCerc20Erc20Balance = await ERC20Deploy.balanceOf(CERC20Deploy.address);
+    //   // 檢查 redeem完後 admin cToken 餘額 有沒有 歸零
+    //   const newAdminCErc20Balance = await CERC20Deploy.balanceOf(owner.address);
+
+    //   expect(newCerc20Erc20Balance).to.equal(0);
+    //   expect(newAdminCErc20Balance).to.equal(0);
+      
+    //   console.log("mint erc20 succes");
+    // });
+
