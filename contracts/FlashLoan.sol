@@ -558,56 +558,63 @@ contract FlashLoan is IFlashLoanReceiver {
         address initiator,
         bytes calldata params
     ) external override returns (bool) {
-        //
-        // This contract now has the funds requested.
-        // Your logic goes here.
-        //
-
-        // At the end of your logic above, this contract owes
-        // the flashloaned amounts + premiums.
-        // Therefore ensure your contract has enough to repay
-        // these amounts.
-
-        // Approve the LendingPool contract allowance to *pull* the owed amount
+      
         // 確定有借到錢！
-        uint256 usdcB =  EIP20Interface(assets[0]).balanceOf(address(this));
+        // uint256 usdcB =  EIP20Interface(assets[0]).balanceOf(address(this));
 
-        console.log("usdcB");
-        console.log(usdcB);
+        // console.log("usdcB");
+        // console.log(usdcB);
         
-        EIP20Interface(assets[0]).approve(cUSDCAddress, 2500 * 1e6);
-
-        CErc20Interface(cUSDCAddress).liquidateBorrow(
-          poorGuyAddress,
-          2500 * 1e6,
-          CTokenInterface(cUNIAddress) 
-        );
-
-        //現在合約本人 拿到 cUNI token
-        uint256 cUNIBalance =  CTokenInterface(cUNIAddress).balanceOf(address(this));
-
-        console.log(cUNIBalance);
-        // CErc20Interface(cUNI).redeem(redeemTokens);
-
-
-        
-
-  //       ISwapRouter.ExactInputSingleParams memory swapParams =
-  // ISwapRouter.ExactInputSingleParams({
-  //   tokenIn: UNI_ADDRESS,
-  //   tokenOut: USDC_ADDRESS,
-  //   fee: 3000, // 0.3%
-  //   recipient: address(this),
-  //   deadline: block.timestamp,
-  //   amountIn: uniAmount,
-  //   amountOutMinimum: 0,
-  //   sqrtPriceLimitX96: 0
-  // });
-
-
+        EIP20Interface(assets[0]).approve(cUSDCAddress, 2500 * 1e18);
 
         uint256 amountOwing = amounts[0] + (premiums[0]);
         EIP20Interface(assets[0]).approve(address(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9), amountOwing);
+      // 2500000000,
+        CErc20Interface(cUSDCAddress).liquidateBorrow(
+          poorGuyAddress,
+          25000000,
+          CTokenInterface(cUNIAddress) 
+        );
+
+        // 現在合約本人 拿到 cUNI token
+        uint256 cUNIBalance =  CTokenInterface(cUNIAddress).balanceOf(address(this));
+        // 換回UNI Token
+        CErc20Interface(cUNIAddress).redeem(cUNIBalance);
+        uint256 UNIBalance =  EIP20Interface(address(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984)).balanceOf(address(this));
+        console.log("UNIBalance");
+        console.log(UNIBalance);
+        
+
+
+        EIP20Interface(address(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984)).approve(address(0xE592427A0AEce92De3Edee1F18E0157C05861564), UNIBalance);
+        
+        ISwapRouter.ExactInputSingleParams memory swapParams =
+          ISwapRouter.ExactInputSingleParams({
+            tokenIn: address(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984),
+            tokenOut: address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48),
+            fee: 3000, // 0.3%
+            recipient: address(this),
+            deadline: block.timestamp,
+            amountIn: UNIBalance,
+            amountOutMinimum: 0,
+            sqrtPriceLimitX96: 0
+        });
+
+        uint256 amountOut = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564).exactInputSingle(swapParams);
+        
+
+        uint256 usdcBFinal =  EIP20Interface(assets[0]).balanceOf(address(this));
+        console.log("usdcBFinal");
+        console.log(usdcBFinal);
+
+        uint256 UNINewBalance =  EIP20Interface(address(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984)).balanceOf(address(this));
+        console.log("UNINewBalance");
+        console.log(UNINewBalance);
+        
+
+
+
+      
 
 
   
@@ -640,6 +647,7 @@ contract FlashLoan is IFlashLoanReceiver {
 
         // 0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9 proxy
         // 0xC6845a5C768BF8D7681249f8927877Efda425baf delegate
+
         ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9).flashLoan(
             receiverAddress,
             assets,

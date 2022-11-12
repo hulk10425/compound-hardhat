@@ -358,6 +358,7 @@ describe('CToken', function () {
       const {accounts, FlashLoanDeploy,cUNIDeploy, cUSDCDeploy, comptrollerDeploy, oracleDeploy} = await loadFixture(deploySixNeedModel);
       uni = await ethers.getContractAt("EIP20Interface",uniContractAddress); //直接拿鏈上有的合約是這樣寫
       usdc = await ethers.getContractAt("EIP20Interface",usdcContractAddress);
+      
 
       const impersonatedSignerUNI = await ethers.getImpersonatedSigner("0x33Ddd548FE3a082d753E5fE721a26E1Ab43e3598");
       const impersonatedSignerUSDC = await ethers.getImpersonatedSigner("0xAe2D4617c862309A3d75A0fFB358c7a5009c673F");
@@ -367,6 +368,9 @@ describe('CToken', function () {
 
       await uni.connect(impersonatedSignerUNI).transfer(accounts[1].address,uniTransferAmount);
       let uniBalanceOfSinger2 = await uni.balanceOf(accounts[1].address);
+
+      //先匯個100美進去，給清算合約當作 還flashloan的手續費
+      await usdc.transfer(FlashLoanDeploy.address, ethers.utils.parseUnits("100", 6));
       
       // console.log("usdcBalanceOfSinger1");
       // console.log(usdcBalanceOfSinger1);
@@ -391,7 +395,7 @@ describe('CToken', function () {
       // 設定 UNI Token 價格為 10
       await oracleDeploy.setUnderlyingPrice(cUNIDeploy.address,ethers.utils.parseUnits("10", 18))
       // 設定 USDC Token 價格為 1
-      await oracleDeploy.setUnderlyingPrice(cUSDCDeploy.address,ethers.utils.parseUnits("1", 18))
+      await oracleDeploy.setUnderlyingPrice(cUSDCDeploy.address,ethers.utils.parseUnits("1", 30))
 
       // comptroller要正常運作需要設定 oracle 以及 colleateral factor
       await comptrollerDeploy._setPriceOracle(oracleDeploy.address);
@@ -424,7 +428,7 @@ describe('CToken', function () {
       // console.log(singer2cUNIBalance);
 
       // Singer2 抵押 1000 UNI 借 5000顆 USDC
-      await cUSDCDeploy.connect(accounts[1]).borrow(ethers.utils.parseUnits("5000", 7));
+      await cUSDCDeploy.connect(accounts[1]).borrow(ethers.utils.parseUnits("5000", 6));
       
       singer2USDCBalance = await usdc.balanceOf(accounts[1].address);
       console.log("singer2USDCBalance");
