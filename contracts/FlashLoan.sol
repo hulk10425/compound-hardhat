@@ -558,36 +558,30 @@ contract FlashLoan is IFlashLoanReceiver {
         address initiator,
         bytes calldata params
     ) external override returns (bool) {
-      
-        // 確定有借到錢！
-        // uint256 usdcB =  EIP20Interface(assets[0]).balanceOf(address(this));
-
-        // console.log("usdcB");
-        // console.log(usdcB);
-        
+        //先Approve cUSDC ，因為會需要將USDC轉到 cUSDC池
         EIP20Interface(assets[0]).approve(cUSDCAddress, 2500 * 1e18);
-
+        //先Approve LendingPool ，因為會需要將 借的 + 利息 USDC轉回給 Lending Pool
         uint256 amountOwing = amounts[0] + (premiums[0]);
         EIP20Interface(assets[0]).approve(address(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9), amountOwing);
-      // 2500000000,
+
+        //接下來開始清算
+        //Question 這邊我認為 清算數字應該是 2500 * 10^6 
+        //但是當我填上後卻發現無法清算，這部分週一上課我會想辦法弄清楚
         CErc20Interface(cUSDCAddress).liquidateBorrow(
           poorGuyAddress,
           25000000,
           CTokenInterface(cUNIAddress) 
         );
 
-        // 現在合約本人 拿到 cUNI token
+        // 清算完成後，我們拿到cUNI Token
         uint256 cUNIBalance =  CTokenInterface(cUNIAddress).balanceOf(address(this));
-        // 換回UNI Token
+        // 接下來，換回UNI Token
         CErc20Interface(cUNIAddress).redeem(cUNIBalance);
+        
         uint256 UNIBalance =  EIP20Interface(address(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984)).balanceOf(address(this));
-        console.log("UNIBalance");
-        console.log(UNIBalance);
-        
-
-
+        //接下來要到 UNISWAP 去將UNI 兌換為 USDC
         EIP20Interface(address(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984)).approve(address(0xE592427A0AEce92De3Edee1F18E0157C05861564), UNIBalance);
-        
+        // 將兌換所需參數設定完成
         ISwapRouter.ExactInputSingleParams memory swapParams =
           ISwapRouter.ExactInputSingleParams({
             tokenIn: address(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984),
@@ -599,25 +593,18 @@ contract FlashLoan is IFlashLoanReceiver {
             amountOutMinimum: 0,
             sqrtPriceLimitX96: 0
         });
-
+        //執行 兌換
         uint256 amountOut = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564).exactInputSingle(swapParams);
         
-
+        //兌換後發現USDC的確變多了！ 清算獲利成功
         uint256 usdcBFinal =  EIP20Interface(assets[0]).balanceOf(address(this));
         console.log("usdcBFinal");
         console.log(usdcBFinal);
-
+        //兌換完 UNI 歸零
         uint256 UNINewBalance =  EIP20Interface(address(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984)).balanceOf(address(this));
         console.log("UNINewBalance");
         console.log(UNINewBalance);
         
-
-
-
-      
-
-
-  
         return true;
     }
 
@@ -641,13 +628,9 @@ contract FlashLoan is IFlashLoanReceiver {
         address onBehalfOf = address(this);
         bytes memory params = "";
         uint16 referralCode = 0;
-        //找ILendingPool 實作 flashLoan 回call excuteOperation的那一段
+        // ILendingPool 實作 flashLoan 回call excuteOperation的實作，可參考
         // https://github.com/aave/protocol-v2/blob/master/contracts/protocol/lendingpool/LendingPool.sol
        
-
-        // 0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9 proxy
-        // 0xC6845a5C768BF8D7681249f8927877Efda425baf delegate
-
         ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9).flashLoan(
             receiverAddress,
             assets,
@@ -657,25 +640,6 @@ contract FlashLoan is IFlashLoanReceiver {
             params,
             referralCode
         );
-   
-
-        
-        //照理說 這時候就會借到 2500顆USDC 
-      
-      // Signer1 執行AAve flash loan 借USDC後 償還 Singer2借的 2500USDC（假設 Close Factor是 50%）
-      // 償還完後，Signer1 取得 cUNI後，接下來 redeem 回 UNI
-      // Singer1 到uniswap 上 將UNI換成USDC
-      // Singer1 償還 在Aave上面借的USDC + premium
-      // 照理說會有剩餘，這時就完成套利囉
-
-          //   // singer2 幫 singer1 還一半
-    //   // cTokenColleateral  cB Token --> 清算人決定要哪種 被清算人獎勵
-    //   await CERC20Deploy.connect(singer[1]).liquidateBorrow(
-    //     singer[0].address,
-    //     ethers.utils.parseUnits("25", 18),
-    //     anotherCERC20Deploy.address
-    //   )
-
     }
 
     function getBalance(address _tokenAddress) external view returns (uint256) {
@@ -700,39 +664,4 @@ contract FlashLoan is IFlashLoanReceiver {
 
     receive() external payable {}
 }
-
-
-    // it("fails when mint/redeem not work", async () => {
-
-    //   const { CERC20Deploy,ERC20Deploy ,comptrollerDeploy, oracleModel} = await loadFixture(deployAllModel);
-    //   const [owner] = await ethers.getSigners();
-      
-    //   const MINT_AMOUNT = 100n * DECIMAL;
-
-    //   await ERC20Deploy.approve(CERC20Deploy.address,MINT_AMOUNT);
-
-    //   await comptrollerDeploy._supportMarket(CERC20Deploy.address);
-
-    //   await CERC20Deploy.mint(MINT_AMOUNT);
-
-    //   const cerc20Erc20Balance = await ERC20Deploy.balanceOf(CERC20Deploy.address);
-    //   const adminCErc20Balance = await CERC20Deploy.balanceOf(owner.address);
-		
-    //   // 檢查 mint完後 cToken 的 A Token balance有沒有增加
-		// 	expect(cerc20Erc20Balance).to.equal(MINT_AMOUNT);
-    //   // 檢查 mint完後 admin cToken 餘額 有沒有 跟 mint amount一樣
-		// 	expect(adminCErc20Balance).to.equal(MINT_AMOUNT);
-
-    //   await CERC20Deploy.redeem(MINT_AMOUNT);
-
-    //   // 檢查 redeem完後 cToken 的 A Token balance有沒有 歸零
-    //   const newCerc20Erc20Balance = await ERC20Deploy.balanceOf(CERC20Deploy.address);
-    //   // 檢查 redeem完後 admin cToken 餘額 有沒有 歸零
-    //   const newAdminCErc20Balance = await CERC20Deploy.balanceOf(owner.address);
-
-    //   expect(newCerc20Erc20Balance).to.equal(0);
-    //   expect(newAdminCErc20Balance).to.equal(0);
-      
-    //   console.log("mint erc20 succes");
-    // });
 

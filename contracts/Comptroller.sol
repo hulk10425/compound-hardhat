@@ -346,13 +346,11 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
         // Pausing is a very serious situation - we revert to sound the alarms
         require(!borrowGuardianPaused[cToken], "borrow is paused");
         if (!markets[cToken].isListed) {
-            console.log(1);
             return uint(Error.MARKET_NOT_LISTED);
         }
         if (!markets[cToken].accountMembership[borrower]) {
             // only cTokens may call borrowAllowed if borrower not in market
             require(msg.sender == cToken, "sender must be cToken");
-            console.log(2);
             // attempt to add borrower to the market
             Error err = addToMarketInternal(CToken(msg.sender), borrower);
             if (err != Error.NO_ERROR) {
@@ -362,14 +360,12 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
             assert(markets[cToken].accountMembership[borrower]);
         }
         if (oracle.getUnderlyingPrice(CToken(cToken)) == 0) {
-            console.log(3);
             return uint(Error.PRICE_ERROR);
         }
 
         uint borrowCap = borrowCaps[cToken];
         // Borrow cap of 0 corresponds to unlimited borrowing
         if (borrowCap != 0) {
-            console.log(4);
             uint totalBorrows = CToken(cToken).totalBorrows();
             uint nextTotalBorrows = add_(totalBorrows, borrowAmount);
             require(nextTotalBorrows < borrowCap, "market borrow cap reached");
@@ -380,9 +376,6 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
             return uint(err);
         }
         if (shortfall > 0) {
-            console.log("shortfall > 0");
-            console.log(shortfall);
-            console.log(5);
             return uint(Error.INSUFFICIENT_LIQUIDITY);
         }
 
@@ -490,31 +483,24 @@ contract Comptroller is ComptrollerV7Storage, ComptrollerInterface, ComptrollerE
         }
 
         uint borrowBalance = CToken(cTokenBorrowed).borrowBalanceStored(borrower);
-        console.log("borrowBalance:");
-        console.log(borrowBalance);
 
         /* allow accounts to be liquidated if the market is deprecated */
         if (isDeprecated(CToken(cTokenBorrowed))) {
-            console.log("0:");
             require(borrowBalance >= repayAmount, "Can not repay more than the total borrow");
         } else {
             /* The borrower must have shortfall in order to be liquidatable */
             (Error err, , uint shortfall) = getAccountLiquidityInternal(borrower);
             if (err != Error.NO_ERROR) {
-                console.log("1:");
-       
                 return uint(err);
             }
 
             if (shortfall == 0) {
-                console.log("2:");
                 return uint(Error.INSUFFICIENT_SHORTFALL);
             }
 
             /* The liquidator may not repay more than what is allowed by the closeFactor */
             uint maxClose = mul_ScalarTruncate(Exp({mantissa: closeFactorMantissa}), borrowBalance);
             if (repayAmount > maxClose) {
-                console.log("3:");
                 return uint(Error.TOO_MUCH_REPAY);
             }
         }

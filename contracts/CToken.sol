@@ -593,7 +593,6 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
       */
     function borrowFresh(address payable borrower, uint borrowAmount) internal {
         /* Fail if borrow not allowed */
-        console.log("borrowFresh");
         uint allowed = comptroller.borrowAllowed(address(this), borrower, borrowAmount);
         if (allowed != 0) {
             revert BorrowComptrollerRejection(allowed);
@@ -678,7 +677,6 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
         if (allowed != 0) {
             revert RepayBorrowComptrollerRejection(allowed);
         }
-        console.log("20");
         /* Verify market's block number equals current block number */
         if (accrualBlockNumber != getBlockNumber()) {
             revert RepayBorrowFreshnessCheck();
@@ -692,10 +690,7 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
         /* If repayAmount == -1, repayAmount = accountBorrows */
         // -1 會溢位成uint 最大值
         uint repayAmountFinal = repayAmount == type(uint).max ? accountBorrowsPrev : repayAmount;
-        console.log("repayAmountFinal");
-        console.log(repayAmountFinal);
         uint actualRepayAmount = doTransferIn(payer, repayAmountFinal);
-        console.log(actualRepayAmount);
         uint accountBorrowsNew = accountBorrowsPrev - actualRepayAmount;
         uint totalBorrowsNew = totalBorrows - actualRepayAmount;
 
@@ -750,7 +745,6 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
         if (accrualBlockNumber != getBlockNumber()) {
             revert LiquidateFreshnessCheck();
         }
-        console.log("10");
         /* Verify cTokenCollateral market's block number equals current block number */
         if (cTokenCollateral.accrualBlockNumber() != getBlockNumber()) {
             revert LiquidateCollateralFreshnessCheck();
@@ -770,17 +764,14 @@ abstract contract CToken is CTokenInterface, ExponentialNoError, TokenErrorRepor
         if (repayAmount == type(uint).max) {
             revert LiquidateCloseAmountIsUintMax();
         }
-        console.log("11");
         /* Fail if repayBorrow fails */
         uint actualRepayAmount = repayBorrowFresh(liquidator, borrower, repayAmount);
-        console.log("12");
         /////////////////////////
         // EFFECTS & INTERACTIONS
         // (No safe failures beyond this point)
 
         /* We calculate the number of collateral tokens that will be seized */
         (uint amountSeizeError, uint seizeTokens) = comptroller.liquidateCalculateSeizeTokens(address(this), address(cTokenCollateral), actualRepayAmount);
-        console.log("13");
         require(amountSeizeError == NO_ERROR, "LIQUIDATE_COMPTROLLER_CALCULATE_AMOUNT_SEIZE_FAILED");
         
         /* Revert if borrower collateral token balance < seizeTokens */

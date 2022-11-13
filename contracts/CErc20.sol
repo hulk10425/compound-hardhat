@@ -49,7 +49,6 @@ contract CErc20 is CToken, CErc20Interface {
      */
     function mint(uint mintAmount) override external returns (uint) {
         mintInternal(mintAmount);
-        console.log("mint sucess");
         return NO_ERROR;
     }
 
@@ -165,10 +164,7 @@ contract CErc20 is CToken, CErc20Interface {
         address underlying_ = underlying;
         EIP20NonStandardInterface token = EIP20NonStandardInterface(underlying_);
         uint balanceBefore = EIP20Interface(underlying_).balanceOf(address(this));
-        console.log("balanceBefore");
-        console.log(balanceBefore);
         token.transferFrom(from, address(this), amount);
-        console.log("31");
 
         bool success;
         assembly {

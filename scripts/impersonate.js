@@ -14,7 +14,6 @@ async function main() {
   usdc = await ethers.getContractAt(erc20,usdcAddress);
 
   let balance = await usdc.balanceOf(binanceHotWalletAddress);
-  console.log(balance);
   
   let transferAmount = 100000000
   await network.provider.request({
@@ -27,9 +26,6 @@ async function main() {
   );
 
   await usdc.connect(binanceWallet).transfer(myWallet,transferAmount);
-  let hulkBalance = await usdc.balanceOf(myWallet)
-  console.log("my balance")
-  console.log(hulkBalance)
 
 }
 
