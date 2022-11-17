@@ -5,7 +5,7 @@ require('@openzeppelin/hardhat-upgrades');
 
 // 辦帳號(免費) https://www.alchemyapi.io
 // 辦好帳號把KEY抓過來貼
-const ALCHEMY_API_KEY = "pz92P-wnhD3D-nA4wgvB90Xyd8_8ksJ5";
+const ALCHEMY_API_KEY = "";
 
 module.exports = {
   //要跟你要編譯的solidity程式上寫的版本一樣

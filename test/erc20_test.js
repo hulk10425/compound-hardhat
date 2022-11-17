@@ -83,10 +83,10 @@ describe('CToken', function () {
         "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
         comptrollerDeploy.address,
         irModelDeploy.address,
-        ethers.utils.parseUnits("1",18),// exchange rate
+        ethers.utils.parseUnits("1",18),// exchange rate 10^6
         "cUSDCToken",
         "cUSDC",
-        6,
+        6,//18
         accounts[0].address
       );
 
@@ -151,6 +151,7 @@ describe('CToken', function () {
       // 設定 UNI Token 價格為 10
       await oracleDeploy.setUnderlyingPrice(cUNIDeploy.address,ethers.utils.parseUnits("10", 18))
       // 設定 USDC Token 價格為 1
+      // 文件有
       await oracleDeploy.setUnderlyingPrice(cUSDCDeploy.address,ethers.utils.parseUnits("1", 30))
 
       // comptroller要正常運作需要設定 oracle 以及 colleateral factor

@@ -527,25 +527,28 @@ contract FlashLoan is IFlashLoanReceiver {
     uint256 amountOutMinimum;
     uint160 sqrtPriceLimitX96;
   }
-  
+    address constant lendingPoolAddress = 0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9;
+    address constant addressProvider = 0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5;
+    address constant uniAddress = 0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984;
+    address constant usdcAddress = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address constant swapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
     address payable owner;
-    address payable cUNIAddress;
-    address payable cUSDCAddress;
+    address payable cUniAddress;
+    address payable cUsdcAddress;
     address payable poorGuyAddress;
-    // address private LENDING_POOL = 0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9;
     constructor(address cUNI, address cUSDC) {
         owner = payable(msg.sender);
-        cUNIAddress = payable(cUNI);
-        cUSDCAddress = payable(cUSDC);
+        cUniAddress = payable(cUNI);
+        cUsdcAddress = payable(cUSDC);
     }
 
 
     function LENDING_POOL() public pure returns (ILendingPool){
-      return ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9);
+      return ILendingPool(lendingPoolAddress);
     }
 
     function ADDRESSES_PROVIDER() external pure returns (ILendingPoolAddressesProvider) {
-      return ILendingPoolAddressesProvider(0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5);
+      return ILendingPoolAddressesProvider(addressProvider);
     }
 
     /**
@@ -559,33 +562,33 @@ contract FlashLoan is IFlashLoanReceiver {
         bytes calldata params
     ) external override returns (bool) {
         //先Approve cUSDC ，因為會需要將USDC轉到 cUSDC池
-        EIP20Interface(assets[0]).approve(cUSDCAddress, 2500 * 1e18);
+        EIP20Interface(assets[0]).approve(cUsdcAddress, 2500 * 1e18);
         //先Approve LendingPool ，因為會需要將 借的 + 利息 USDC轉回給 Lending Pool
         uint256 amountOwing = amounts[0] + (premiums[0]);
-        EIP20Interface(assets[0]).approve(address(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9), amountOwing);
+        EIP20Interface(assets[0]).approve(address(lendingPoolAddress), amountOwing);
 
         //接下來開始清算
         //Question 這邊我認為 清算數字應該是 2500 * 10^6 
         //但是當我填上後卻發現無法清算，這部分週一上課我會想辦法弄清楚
-        CErc20Interface(cUSDCAddress).liquidateBorrow(
+        CErc20Interface(cUsdcAddress).liquidateBorrow(
           poorGuyAddress,
           25000000,
-          CTokenInterface(cUNIAddress) 
+          CTokenInterface(cUniAddress) 
         );
 
         // 清算完成後，我們拿到cUNI Token
-        uint256 cUNIBalance =  CTokenInterface(cUNIAddress).balanceOf(address(this));
+        uint256 cUNIBalance =  CTokenInterface(cUniAddress).balanceOf(address(this));
         // 接下來，換回UNI Token
-        CErc20Interface(cUNIAddress).redeem(cUNIBalance);
+        CErc20Interface(cUniAddress).redeem(cUNIBalance);
         
-        uint256 UNIBalance =  EIP20Interface(address(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984)).balanceOf(address(this));
+        uint256 UNIBalance =  EIP20Interface(address(uniAddress)).balanceOf(address(this));
         //接下來要到 UNISWAP 去將UNI 兌換為 USDC
-        EIP20Interface(address(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984)).approve(address(0xE592427A0AEce92De3Edee1F18E0157C05861564), UNIBalance);
+        EIP20Interface(address(uniAddress)).approve(address(swapRouter), UNIBalance);
         // 將兌換所需參數設定完成
         ISwapRouter.ExactInputSingleParams memory swapParams =
           ISwapRouter.ExactInputSingleParams({
-            tokenIn: address(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984),
-            tokenOut: address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48),
+            tokenIn: address(uniAddress),
+            tokenOut: address(usdcAddress),
             fee: 3000, // 0.3%
             recipient: address(this),
             deadline: block.timestamp,
@@ -594,14 +597,14 @@ contract FlashLoan is IFlashLoanReceiver {
             sqrtPriceLimitX96: 0
         });
         //執行 兌換
-        uint256 amountOut = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564).exactInputSingle(swapParams);
+        uint256 amountOut = ISwapRouter(swapRouter).exactInputSingle(swapParams);
         
         //兌換後發現USDC的確變多了！ 清算獲利成功
         uint256 usdcBFinal =  EIP20Interface(assets[0]).balanceOf(address(this));
         console.log("usdcBFinal");
         console.log(usdcBFinal);
         //兌換完 UNI 歸零
-        uint256 UNINewBalance =  EIP20Interface(address(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984)).balanceOf(address(this));
+        uint256 UNINewBalance =  EIP20Interface(address(uniAddress)).balanceOf(address(this));
         console.log("UNINewBalance");
         console.log(UNINewBalance);
         
@@ -631,7 +634,7 @@ contract FlashLoan is IFlashLoanReceiver {
         // ILendingPool 實作 flashLoan 回call excuteOperation的實作，可參考
         // https://github.com/aave/protocol-v2/blob/master/contracts/protocol/lendingpool/LendingPool.sol
        
-        ILendingPool(0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9).flashLoan(
+        ILendingPool(lendingPoolAddress).flashLoan(
             receiverAddress,
             assets,
             amounts,
