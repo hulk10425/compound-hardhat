@@ -565,7 +565,7 @@ contract FlashLoan is IFlashLoanReceiver {
         EIP20Interface(assets[0]).approve(cUsdcAddress, 2500 * 1e18);
         //先Approve LendingPool ，因為會需要將 借的 + 利息 USDC轉回給 Lending Pool
         uint256 amountOwing = amounts[0] + (premiums[0]);
-        EIP20Interface(assets[0]).approve(address(lendingPoolAddress), amountOwing);
+        EIP20Interface(assets[0]).approve(lendingPoolAddress, amountOwing);
 
         //接下來開始清算
         //Question 這邊我認為 清算數字應該是 2500 * 10^6 
@@ -581,14 +581,14 @@ contract FlashLoan is IFlashLoanReceiver {
         // 接下來，換回UNI Token
         CErc20Interface(cUniAddress).redeem(cUNIBalance);
         
-        uint256 UNIBalance =  EIP20Interface(address(uniAddress)).balanceOf(address(this));
+        uint256 UNIBalance =  EIP20Interface(uniAddress).balanceOf(address(this));
         //接下來要到 UNISWAP 去將UNI 兌換為 USDC
-        EIP20Interface(address(uniAddress)).approve(address(swapRouter), UNIBalance);
+        EIP20Interface(uniAddress).approve(swapRouter, UNIBalance);
         // 將兌換所需參數設定完成
         ISwapRouter.ExactInputSingleParams memory swapParams =
           ISwapRouter.ExactInputSingleParams({
-            tokenIn: address(uniAddress),
-            tokenOut: address(usdcAddress),
+            tokenIn: uniAddress,
+            tokenOut: usdcAddress,
             fee: 3000, // 0.3%
             recipient: address(this),
             deadline: block.timestamp,
@@ -604,7 +604,7 @@ contract FlashLoan is IFlashLoanReceiver {
         console.log("usdcBFinal");
         console.log(usdcBFinal);
         //兌換完 UNI 歸零
-        uint256 UNINewBalance =  EIP20Interface(address(uniAddress)).balanceOf(address(this));
+        uint256 UNINewBalance =  EIP20Interface(uniAddress).balanceOf(address(this));
         console.log("UNINewBalance");
         console.log(UNINewBalance);
         
@@ -615,7 +615,7 @@ contract FlashLoan is IFlashLoanReceiver {
       poorGuyAddress = payable(poorGuy);
     }
 
-    function requestFlashLoan(address _token, uint256 _amount) public {
+    function requestFlashLoan(address _token, uint256 _amount) public onlyOwner {
         address receiverAddress = address(this);
 
         address[] memory assets = new address[](1);

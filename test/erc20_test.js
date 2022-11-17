@@ -16,9 +16,8 @@ const {
 } = require("@nomicfoundation/hardhat-network-helpers");
 
 const { expect } = require("chai");
-const { upgrades, ethers } = require('hardhat');
+const { ethers } = require('hardhat');
 const BigNumber = require('big-number');
-const { getCreate2Address } = require('ethers/lib/utils');
 
 const DECIMAL = 10n ** 18n;
 
@@ -54,8 +53,6 @@ describe('CToken', function () {
     async function deploySixNeedModel() {
      
       LendingPoolAddressesProvider = "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5";
-
-      const accounts = await ethers.getSigners();
 
       const { comptrollerDeploy } = await loadFixture(deployComptroller);
 
@@ -98,7 +95,7 @@ describe('CToken', function () {
       await FlashLoanDeploy.deployed();
       await cUNIDeploy.deployed();   
       await cUSDCDeploy.deployed();
-      return {accounts, FlashLoanDeploy,cUNIDeploy, cUSDCDeploy, comptrollerDeploy, oracleDeploy};
+      return {FlashLoanDeploy,cUNIDeploy, cUSDCDeploy, comptrollerDeploy, oracleDeploy};
     }
 
     // 第六題
@@ -117,7 +114,9 @@ describe('CToken', function () {
       const CLOSE_FACTOR = ethers.utils.parseUnits("0.5", 18);
       const INCENTIVE_FACTOR =  ethers.utils.parseUnits("1.1", 18);
 
-      const {accounts, FlashLoanDeploy,cUNIDeploy, cUSDCDeploy, comptrollerDeploy, oracleDeploy} = await loadFixture(deploySixNeedModel);
+      const accounts = await ethers.getSigners();
+
+      const {FlashLoanDeploy,cUNIDeploy, cUSDCDeploy, comptrollerDeploy, oracleDeploy} = await loadFixture(deploySixNeedModel);
       
       uni = await ethers.getContractAt("EIP20Interface",uniContractAddress); //直接拿鏈上有的合約是這樣寫
       usdc = await ethers.getContractAt("EIP20Interface",usdcContractAddress);
