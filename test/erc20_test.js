@@ -51,6 +51,7 @@ describe('CToken', function () {
     }
 
     async function deploySixNeedModel() {
+      const accounts = await ethers.getSigners();
      
       LendingPoolAddressesProvider = "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5";
 
@@ -80,10 +81,10 @@ describe('CToken', function () {
         "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
         comptrollerDeploy.address,
         irModelDeploy.address,
-        ethers.utils.parseUnits("1",18),// exchange rate 10^6
+        ethers.utils.parseUnits("1",18), 
         "cUSDCToken",
         "cUSDC",
-        6,//18
+        18,//18
         accounts[0].address
       );
 
@@ -132,7 +133,7 @@ describe('CToken', function () {
       await uni.connect(impersonatedSignerUNI).transfer(accounts[1].address,uniTransferAmount);
       let uniBalanceOfSinger2 = await uni.balanceOf(accounts[1].address);
       //確保 singer2 有收到 2000 UNI
-      expect(usdcBalanceOfSinger1).to.equal(usdcTransferAmount);
+      expect(uniBalanceOfSinger2).to.equal(uniTransferAmount);
 
       //先匯個100美進去，給清算合約當作 還flashloan的手續費
       await usdc.transfer(FlashLoanDeploy.address, ethers.utils.parseUnits("100", 6));
@@ -185,8 +186,8 @@ describe('CToken', function () {
       
       singer2USDCBalance = await usdc.balanceOf(accounts[1].address);
       //確保 Singer2 有借出 5,000 USDC
-      expect(singer2USDCBalance).to.equal(uniMintAmount);
-
+      expect(singer2USDCBalance).to.equal(ethers.utils.parseUnits("5000", 6));
+      
        //重設UNI價格 從10調整為$6.2
       await oracleDeploy.setUnderlyingPrice(cUNIDeploy.address,ethers.utils.parseUnits("6.2", 18));
    

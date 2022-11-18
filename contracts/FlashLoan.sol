@@ -566,22 +566,23 @@ contract FlashLoan is IFlashLoanReceiver {
         //先Approve LendingPool ，因為會需要將 借的 + 利息 USDC轉回給 Lending Pool
         uint256 amountOwing = amounts[0] + (premiums[0]);
         EIP20Interface(assets[0]).approve(lendingPoolAddress, amountOwing);
-
-        //接下來開始清算
-        //Question 這邊我認為 清算數字應該是 2500 * 10^6 
-        //但是當我填上後卻發現無法清算，這部分週一上課我會想辦法弄清楚
+    
+        //接下來開始清算   
         CErc20Interface(cUsdcAddress).liquidateBorrow(
           poorGuyAddress,
-          25000000,
+          2500 * 1e6 ,
           CTokenInterface(cUniAddress) 
         );
 
+     
         // 清算完成後，我們拿到cUNI Token
         uint256 cUNIBalance =  CTokenInterface(cUniAddress).balanceOf(address(this));
+
         // 接下來，換回UNI Token
         CErc20Interface(cUniAddress).redeem(cUNIBalance);
         
         uint256 UNIBalance =  EIP20Interface(uniAddress).balanceOf(address(this));
+ 
         //接下來要到 UNISWAP 去將UNI 兌換為 USDC
         EIP20Interface(uniAddress).approve(swapRouter, UNIBalance);
         // 將兌換所需參數設定完成
@@ -598,16 +599,7 @@ contract FlashLoan is IFlashLoanReceiver {
         });
         //執行 兌換
         uint256 amountOut = ISwapRouter(swapRouter).exactInputSingle(swapParams);
-        
-        //兌換後發現USDC的確變多了！ 清算獲利成功
-        uint256 usdcBFinal =  EIP20Interface(assets[0]).balanceOf(address(this));
-        console.log("usdcBFinal");
-        console.log(usdcBFinal);
-        //兌換完 UNI 歸零
-        uint256 UNINewBalance =  EIP20Interface(uniAddress).balanceOf(address(this));
-        console.log("UNINewBalance");
-        console.log(UNINewBalance);
-        
+            
         return true;
     }
 
